@@ -254,7 +254,7 @@ export default function ClientDetailPage() {
             <User className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{client.name}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{client?.name}</h1>
             <p className="text-muted-foreground">Detalji klijenta</p>
           </div>
         </div>
@@ -272,14 +272,14 @@ export default function ClientDetailPage() {
                 <User className="w-5 h-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Ime</p>
-                  <p className="text-foreground">{client.name}</p>
+                  <p className="text-foreground">{client?.name}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">E-pošta</p>
-                  <p className="text-foreground">{client.email}</p>
+                  <p className="text-foreground">{client?.email}</p>
                 </div>
               </div>
             </div>
@@ -288,25 +288,25 @@ export default function ClientDetailPage() {
                 <Phone className="w-5 h-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Telefon</p>
-                  <p className="text-foreground">{client.phone}</p>
+                  <p className="text-foreground">{client?.phone}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <FileText className="w-5 h-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">OIB</p>
-                  <p className="text-foreground">{client.oib}</p>
+                  <p className="text-foreground">{client?.oib}</p>
                 </div>
               </div>
             </div>
           </div>
-          {client.notes && (
+          {client?.notes && (
             <div className="mt-6 pt-6 border-t border-border">
               <div className="flex items-start space-x-3">
                 <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-2">Bilješke</p>
-                  <p className="text-foreground">{client.notes}</p>
+                  <p className="text-foreground">{client?.notes}</p>
                 </div>
               </div>
             </div>

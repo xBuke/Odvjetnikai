@@ -205,7 +205,7 @@ export default function CaseDetailPage() {
 
     const now = new Date();
     const newTimelineEvent: TimelineEvent = {
-      id: Date.now(),
+      id: Date.now().toString(),
       type: newEvent.type,
       title: newEvent.title,
       description: newEvent.description,

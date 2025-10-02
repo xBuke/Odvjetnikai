@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, createContext, useContext, ReactNode } from 'react';
 import { CheckCircle, XCircle } from 'lucide-react';
 
 interface ToastProps {
@@ -42,7 +42,6 @@ export function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
 }
 
 // Toast context for global state management
-import { createContext, useContext, useState, ReactNode } from 'react';
 
 interface ToastContextType {
   showToast: (message: string, type: 'success' | 'error') => void;

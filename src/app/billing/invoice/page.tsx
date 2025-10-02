@@ -61,9 +61,9 @@ export default function InvoicePreviewPage() {
       setInvoiceData({
         entries: [
           {
-            id: 1,
-            client_id: 1,
-            case_id: 1,
+            id: "1",
+            client_id: "1",
+            case_id: "1",
             hours: 8.5,
             rate: 250,
             notes: '',

@@ -251,7 +251,7 @@ export default function CalendarPage() {
     setShowModal(true);
   };
 
-  const handleDeleteDeadline = async (deadlineId: number) => {
+  const handleDeleteDeadline = async (deadlineId: string) => {
     if (confirm('Are you sure you want to delete this deadline?')) {
       try {
         setError(null);

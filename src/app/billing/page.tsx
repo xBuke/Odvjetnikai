@@ -96,7 +96,7 @@ export default function BillingPage() {
     rate: 0,
     notes: ''
   });
-  const [selectedEntries, setSelectedEntries] = useState<number[]>([]);
+  const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -278,7 +278,7 @@ export default function BillingPage() {
   };
 
   // Delete billing entry
-  const handleDelete = async (entryId: number) => {
+  const handleDelete = async (entryId: string) => {
     if (!confirm(t('billing.confirmDelete'))) {
       return;
     }

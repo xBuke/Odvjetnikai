@@ -19,6 +19,13 @@ import { FormField, FormInput, FormTextarea, FormActions } from '../../component
 import { supabase } from '@/lib/supabaseClient';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ui/Toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  selectWithUserId, 
+  insertAndReturnWithUserId, 
+  updateWithUserId, 
+  deleteWithUserId 
+} from '@/lib/supabaseHelpers';
 
 interface Client {
   id: string;
@@ -34,6 +41,7 @@ interface Client {
 export default function ClientsPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { session } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -68,25 +76,13 @@ export default function ClientsPage() {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Supabase error loading clients:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
-        throw error;
-      }
-
+      const data = await selectWithUserId(supabase, 'clients');
       setClients(data || []);
     } catch (err) {
       console.error('Error loading clients:', err);
-      setError('Greška pri učitavanju klijenata. Molimo pokušajte ponovno.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load clients. Please try again.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     } finally {
       setLoading(false);
     }
@@ -132,55 +128,36 @@ export default function ClientsPage() {
 
       if (editingClient) {
         // Update existing client
-        const { data, error } = await supabase
-          .from('clients')
-          .update({
+        const data = await updateWithUserId(
+          supabase, 
+          'clients', 
+          'id', 
+          editingClient.id, 
+          {
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
             oib: formData.oib,
             notes: formData.notes,
             updated_at: new Date().toISOString()
-          })
-          .eq('id', editingClient.id)
-          .select()
-          .single();
+          }
+        );
 
-        if (error) {
-          console.error('Supabase update error:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          });
-          throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Klijent nije pronađen');
         }
 
         console.log('Client updated successfully:', data);
         showToast('✔ Klijent uspješno ažuriran', 'success');
       } else {
         // Add new client
-        const { data, error } = await supabase
-          .from('clients')
-          .insert([{
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            oib: formData.oib,
-            notes: formData.notes
-          }])
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Supabase insert error:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          });
-          throw error;
-        }
+        const data = await insertAndReturnWithUserId(supabase, 'clients', {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          oib: formData.oib,
+          notes: formData.notes
+        });
 
         console.log('Client created successfully:', data);
         showToast('✔ Klijent uspješno dodan', 'success');
@@ -199,7 +176,7 @@ export default function ClientsPage() {
       });
       const errorMessage = err instanceof Error ? err.message : 'Greška pri spremanju klijenta. Molimo pokušajte ponovno.';
       setError(errorMessage);
-      showToast('✖ Došlo je do greške', 'error');
+      showToast(errorMessage ?? "Greška pri spremanju", 'error');
     } finally {
       setSubmitting(false);
     }
@@ -224,21 +201,10 @@ export default function ClientsPage() {
       try {
         setError(null);
         
+        const data = await deleteWithUserId(supabase, 'clients', 'id', clientId);
 
-        const { data, error } = await supabase
-          .from('clients')
-          .delete()
-          .eq('id', clientId)
-          .select();
-
-        if (error) {
-          console.error('Supabase delete error:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          });
-          throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Klijent nije pronađen');
         }
 
         console.log('Client deleted successfully:', data);
@@ -253,7 +219,7 @@ export default function ClientsPage() {
         });
         const errorMessage = err instanceof Error ? err.message : 'Greška pri brisanju klijenta. Molimo pokušajte ponovno.';
         setError(errorMessage);
-        showToast('✖ Došlo je do greške', 'error');
+        showToast(errorMessage ?? "Greška pri spremanju", 'error');
       }
     }
   };

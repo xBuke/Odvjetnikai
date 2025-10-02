@@ -17,6 +17,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { selectSingleWithUserId } from '@/lib/supabaseHelpers';
 
 interface Client {
   id: string;
@@ -51,6 +53,7 @@ export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
   const clientId = params.id as string;
+  const { session } = useAuth();
 
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
@@ -135,30 +138,15 @@ export default function ClientDetailPage() {
       setError(null);
 
       // Fetch client data from Supabase
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', clientId)
-        .single();
-
-      if (error) {
-        setError('Greška pri učitavanju klijenta');
-        return;
-      }
-
-      if (!data) {
-        setError('Klijent nije pronađen');
-        return;
-      }
-
+      const data = await selectSingleWithUserId(supabase, 'clients', 'id', clientId);
       setClient(data);
     } catch (err) {
       console.error('Error loading client:', err);
-      setError('Greška pri učitavanju klijenta');
+      setError('Greška pri dohvaćanju klijenata');
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, session?.user?.id]);
 
   useEffect(() => {
     loadClientData();

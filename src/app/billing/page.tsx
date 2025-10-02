@@ -17,7 +17,15 @@ import {
 import Modal from '../../components/ui/Modal';
 import { FormField, FormInput, FormSelect, FormTextarea, FormActions } from '../../components/ui/Form';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 import { supabase } from '@/lib/supabaseClient';
+import { 
+  selectWithUserId, 
+  insertWithUserId, 
+  updateWithUserId, 
+  deleteWithUserId 
+} from '@/lib/supabaseHelpers';
 
 interface Client {
   id: string;
@@ -73,6 +81,8 @@ interface TimeEntryForm {
 }
 
 export default function BillingPage() {
+  const { showToast } = useToast();
+  
   // Safe access to language context
   let t: (key: string) => string;
   try {
@@ -82,6 +92,9 @@ export default function BillingPage() {
     // Fallback function if context is not available
     t = (key: string) => key;
   }
+
+  // Get user session for multitenancy
+  const { user, session } = useAuth();
 
   // State management
   const [billingEntries, setBillingEntries] = useState<BillingEntryWithDetails[]>([]);
@@ -111,38 +124,26 @@ export default function BillingPage() {
   // Load clients from Supabase
   const loadClients = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
+      const data = await selectWithUserId(supabase, 'clients') as Client[];
       setClients(data || []);
     } catch (err) {
       console.error('Error loading clients:', err);
-      setError(t('billing.failedToLoadClients'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load clients. Please try again.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
   }, [t]);
 
   // Load cases from Supabase
   const loadCases = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('cases')
-        .select('*')
-        .order('title', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
+      const data = await selectWithUserId(supabase, 'cases') as Case[];
       setCases(data || []);
     } catch (err) {
       console.error('Error loading cases:', err);
-      setError(t('billing.failedToLoadCases'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load cases. Please try again.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
   }, [t]);
 
@@ -151,14 +152,8 @@ export default function BillingPage() {
     try {
       setLoading(true);
       setError(null);
-      const { data, error } = await supabase
-        .from('billing_entries')
-        .select('*, clients(name), cases(title)')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
+      
+      const data = await selectWithUserId(supabase, 'billing_entries', {}, '*, clients(name), cases(title)') as any[];
 
       // Transform data to include clientName, caseName, and total
       const entriesWithDetails: BillingEntryWithDetails[] = (data || []).map(entry => ({
@@ -171,7 +166,9 @@ export default function BillingPage() {
       setBillingEntries(entriesWithDetails);
     } catch (err) {
       console.error('Error loading billing entries:', err);
-      setError(t('billing.failedToLoadBillingEntries'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load billing entries. Please try again.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     } finally {
       setLoading(false);
     }
@@ -205,19 +202,13 @@ export default function BillingPage() {
       setSubmitting(true);
       setError(null);
 
-      const { error } = await supabase.from('billing_entries').insert([
-        {
-          client_id: parseInt(formData.client_id),
-          case_id: parseInt(formData.case_id),
-          hours: formData.hours,
-          rate: formData.rate,
-          notes: formData.notes
-        }
-      ]);
-
-      if (error) {
-        throw error;
-      }
+      await insertWithUserId(supabase, 'billing_entries', {
+        client_id: parseInt(formData.client_id),
+        case_id: parseInt(formData.case_id),
+        hours: formData.hours,
+        rate: formData.rate,
+        notes: formData.notes
+      });
 
       // Refresh the billing entries
       await loadBillingEntries();
@@ -226,9 +217,20 @@ export default function BillingPage() {
       setFormData({ client_id: '', case_id: '', hours: 0, rate: 0, notes: '' });
       setIsModalOpen(false);
       setEditingEntry(null);
+      
+      // Show success toast
+      showToast('Račun spremljen', 'success');
     } catch (err) {
-      console.error('Error creating billing entry:', err);
-      setError(t('billing.failedToCreateEntry'));
+      console.error('Error creating billing entry:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      });
+      
+      // Show more specific error message
+      const errorMessage = err instanceof Error ? err.message : 'Greška pri spremanju računa. Molimo pokušajte ponovno.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri spremanju", 'error');
     } finally {
       setSubmitting(false);
     }
@@ -247,20 +249,13 @@ export default function BillingPage() {
       setSubmitting(true);
       setError(null);
 
-      const { error } = await supabase
-        .from('billing_entries')
-        .update({
-          client_id: parseInt(formData.client_id),
-          case_id: parseInt(formData.case_id),
-          hours: formData.hours,
-          rate: formData.rate,
-          notes: formData.notes
-        })
-        .eq('id', editingEntry.id);
-
-      if (error) {
-        throw error;
-      }
+      await updateWithUserId(supabase, 'billing_entries', 'id', editingEntry.id, {
+        client_id: parseInt(formData.client_id),
+        case_id: parseInt(formData.case_id),
+        hours: formData.hours,
+        rate: formData.rate,
+        notes: formData.notes
+      });
 
       // Refresh the billing entries
       await loadBillingEntries();
@@ -269,9 +264,20 @@ export default function BillingPage() {
       setFormData({ client_id: '', case_id: '', hours: 0, rate: 0, notes: '' });
       setIsModalOpen(false);
       setEditingEntry(null);
+      
+      // Show success toast
+      showToast('Račun spremljen', 'success');
     } catch (err) {
-      console.error('Error updating billing entry:', err);
-      setError(t('billing.failedToUpdateEntry'));
+      console.error('Error updating billing entry:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      });
+      
+      // Show more specific error message
+      const errorMessage = err instanceof Error ? err.message : 'Greška pri spremanju računa. Molimo pokušajte ponovno.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri spremanju", 'error');
     } finally {
       setSubmitting(false);
     }
@@ -286,20 +292,21 @@ export default function BillingPage() {
     try {
       setError(null);
 
-      const { error } = await supabase
-        .from('billing_entries')
-        .delete()
-        .eq('id', entryId);
-
-      if (error) {
-        throw error;
-      }
+      await deleteWithUserId(supabase, 'billing_entries', 'id', entryId);
 
       // Refresh the billing entries
       await loadBillingEntries();
     } catch (err) {
-      console.error('Error deleting billing entry:', err);
-      setError(t('billing.failedToDeleteEntry'));
+      console.error('Error deleting billing entry:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      });
+      
+      // Show more specific error message
+      const errorMessage = err instanceof Error ? err.message : t('billing.failedToDeleteEntry');
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri spremanju", 'error');
     }
   };
 

@@ -9,6 +9,13 @@ import { FormField, FormInput, FormSelect, FormActions } from '../../components/
 import { supabase } from '@/lib/supabaseClient';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ui/Toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  selectWithUserId, 
+  insertWithUserId, 
+  updateWithUserId, 
+  deleteWithUserId 
+} from '@/lib/supabaseHelpers';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const localizer = momentLocalizer(moment);
@@ -28,6 +35,7 @@ interface Deadline {
   title: string;
   case_id: string;
   due_date: string;
+  user_id: string;
   created_at: string;
   updated_at?: string;
   cases?: {
@@ -53,6 +61,7 @@ interface NewEvent {
 
 export default function CalendarPage() {
   const { showToast } = useToast();
+  const { user } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -92,19 +101,13 @@ export default function CalendarPage() {
   // Load cases from Supabase
   const loadCases = async () => {
     try {
-      const { data, error } = await supabase
-        .from('cases')
-        .select('*')
-        .order('title', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
+      const data = await selectWithUserId(supabase, 'cases');
       setCases(data || []);
     } catch (err) {
       console.error('Error loading cases:', err);
-      setError('Failed to load cases. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load cases. Please try again.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
   };
 
@@ -113,15 +116,8 @@ export default function CalendarPage() {
     try {
       setLoading(true);
       setError(null);
-      const { data, error } = await supabase
-        .from('deadlines')
-        .select('*, cases(title)')
-        .order('due_date', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
+      
+      const data = await selectWithUserId(supabase, 'deadlines', {}, '*, cases(title)');
       setDeadlines(data || []);
 
       // Transform deadlines to events for the calendar
@@ -142,7 +138,11 @@ export default function CalendarPage() {
       setEvents(calendarEvents);
     } catch (err) {
       console.error('Error loading deadlines:', err);
-      setError('Failed to load deadlines. Please try again.');
+      
+      // Show more specific error message from Supabase
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load deadlines. Please try again.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     } finally {
       setLoading(false);
     }
@@ -154,10 +154,15 @@ export default function CalendarPage() {
       await Promise.all([loadCases(), loadDeadlines()]);
     };
     loadData();
-  }, []);
+  }, [user]);
 
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      setError('User not authenticated');
+      return;
+    }
     
     if (!newEvent.title || !newEvent.case_id || !newEvent.due_date || !newEvent.time) {
       setError('Please fill in all fields');
@@ -170,40 +175,27 @@ export default function CalendarPage() {
 
       // Combine date and time
       const [hours, minutes] = newEvent.time.split(':').map(Number);
-      const dueDate = new Date(newEvent.due_date);
-      dueDate.setHours(hours, minutes);
+      const selectedDate = new Date(newEvent.due_date);
+      selectedDate.setHours(hours, minutes);
       
-      // Convert to ISO string for consistent storage
-      const isoDate = dueDate.toISOString();
+      // Normalize date with toISOString as requested
+      const isoDate = new Date(selectedDate).toISOString();
 
       if (editingDeadline) {
         // Update existing deadline
-        const { error } = await supabase
-          .from('deadlines')
-          .update({
-            title: newEvent.title,
-            case_id: parseInt(newEvent.case_id),
-            due_date: isoDate,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingDeadline.id);
-
-        if (error) {
-          throw error;
-        }
+        await updateWithUserId(supabase, 'deadlines', 'id', editingDeadline.id, {
+          title: newEvent.title,
+          case_id: newEvent.case_id,
+          due_date: isoDate,
+          updated_at: new Date().toISOString()
+        });
       } else {
-        // Add new deadline
-        const { error } = await supabase
-          .from('deadlines')
-          .insert([{
-            title: newEvent.title,
-            case_id: parseInt(newEvent.case_id),
-            due_date: isoDate
-          }]);
-
-        if (error) {
-          throw error;
-        }
+        // Add new deadline with user_id
+        await insertWithUserId(supabase, 'deadlines', {
+          title: newEvent.title,
+          case_id: newEvent.case_id,
+          due_date: isoDate
+        });
       }
 
       // Reload deadlines and reset form
@@ -218,8 +210,11 @@ export default function CalendarPage() {
         message: err instanceof Error ? err.message : 'Unknown error',
         stack: err instanceof Error ? err.stack : undefined
       });
-      setError('Failed to save deadline. Please try again.');
-      showToast('✖ Došlo je do greške', 'error');
+      
+      // Show more specific error message from Supabase
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save deadline. Please try again.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri spremanju", 'error');
     } finally {
       setSubmitting(false);
     }
@@ -252,17 +247,15 @@ export default function CalendarPage() {
   };
 
   const handleDeleteDeadline = async (deadlineId: string) => {
+    if (!user) {
+      setError('User not authenticated');
+      return;
+    }
+
     if (confirm('Are you sure you want to delete this deadline?')) {
       try {
         setError(null);
-        const { error } = await supabase
-          .from('deadlines')
-          .delete()
-          .eq('id', deadlineId);
-
-        if (error) {
-          throw error;
-        }
+        await deleteWithUserId(supabase, 'deadlines', 'id', deadlineId);
 
         // Reload deadlines after deletion
         await loadDeadlines();
@@ -273,8 +266,11 @@ export default function CalendarPage() {
           message: err instanceof Error ? err.message : 'Unknown error',
           stack: err instanceof Error ? err.stack : undefined
         });
-        setError('Failed to delete deadline. Please try again.');
-        showToast('✖ Došlo je do greške', 'error');
+        
+        // Show more specific error message from Supabase
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete deadline. Please try again.';
+        setError(errorMessage);
+        showToast(errorMessage ?? "Greška pri spremanju", 'error');
       }
     }
   };

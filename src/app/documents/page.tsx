@@ -17,7 +17,14 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import { 
+  selectWithUserId, 
+  insertWithUserId, 
+  deleteWithUserId,
+  getUserOrThrow
+} from '@/lib/supabaseHelpers';
 
 interface Case {
   id: string;
@@ -48,6 +55,7 @@ interface Template {
 
 export default function DocumentsPage() {
   const { showToast } = useToast();
+  const { user, session } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -84,15 +92,10 @@ export default function DocumentsPage() {
 
   // Load cases from Supabase
   const loadCases = async () => {
+    if (!user) return;
+    
     try {
-      const { data, error } = await supabase
-        .from('cases')
-        .select('*, clients(name)')
-        .order('title', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
+      const data = await selectWithUserId(supabase, 'cases', {}, '*, clients(name)');
 
       // Transform data to match Case interface
       const casesWithClient: Case[] = (data || []).map(caseItem => ({
@@ -105,7 +108,11 @@ export default function DocumentsPage() {
       setCases(casesWithClient);
     } catch (err) {
       console.error('Error loading cases:', err);
-      setError('Failed to load cases. Please try again.');
+      
+      // Show more specific error message from Supabase
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load cases. Please try again.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
   };
 
@@ -114,19 +121,16 @@ export default function DocumentsPage() {
     try {
       setLoading(true);
       setError(null);
-      const { data, error } = await supabase
-        .from('documents')
-        .select('*, cases(title)')
-        .order('uploaded_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
+      
+      const data = await selectWithUserId(supabase, 'documents', {}, '*, cases(title)');
       setDocuments(data || []);
     } catch (err) {
       console.error('Error loading documents:', err);
-      setError('Failed to load documents. Please try again.');
+      
+      // Show more specific error message from Supabase
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load documents. Please try again.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     } finally {
       setLoading(false);
     }
@@ -134,11 +138,13 @@ export default function DocumentsPage() {
 
   // Load data on component mount
   useEffect(() => {
-    const loadData = async () => {
-      await Promise.all([loadCases(), loadDocuments()]);
-    };
-    loadData();
-  }, []);
+    if (user) {
+      const loadData = async () => {
+        await Promise.all([loadCases(), loadDocuments()]);
+      };
+      loadData();
+    }
+  }, [user]);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadFormData, setUploadFormData] = useState({
@@ -195,6 +201,9 @@ export default function DocumentsPage() {
         throw new Error('Supabase configuration missing. Please check your environment variables.');
       }
 
+      // Get current user (will throw if not authenticated)
+      const currentUser = await getUserOrThrow(supabase);
+
       // First, check if the storage bucket exists
       const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
       
@@ -226,36 +235,31 @@ export default function DocumentsPage() {
         .getPublicUrl(`docs/${fileName}`);
 
       // Insert metadata into documents table
-      const { error: insertError } = await supabase
-        .from('documents')
-        .insert([{
-          name: uploadFormData.name,
-          file_url: publicUrl,
-          case_id: uploadFormData.caseId ? parseInt(uploadFormData.caseId) : null,
-          file_size: selectedFile.size,
-          file_type: selectedFile.type
-        }]);
-
-      if (insertError) {
-        console.error('Database insert error:', insertError);
-        throw insertError;
-      }
+      await insertWithUserId(supabase, 'documents', {
+        name: uploadFormData.name,
+        file_url: publicUrl,
+        case_id: uploadFormData.caseId ? parseInt(uploadFormData.caseId) : null,
+        file_size: selectedFile.size,
+        file_type: selectedFile.type
+      });
 
       // Reload documents and reset form
       await loadDocuments();
       setUploadFormData({ name: '', caseId: '', type: '' });
       setSelectedFile(null);
       setIsUploadModalOpen(false);
-      showToast('✔ Dokument uspješno učitavan', 'success');
+      showToast('Dokument uspješno spremljen', 'success');
     } catch (err) {
       console.error('Error uploading file:', {
         error: err,
         message: err instanceof Error ? err.message : 'Unknown error',
         stack: err instanceof Error ? err.stack : undefined
       });
+      
+      // Show more specific error message from Supabase
       const errorMessage = err instanceof Error ? err.message : 'Failed to upload document. Please try again.';
       setError(errorMessage);
-      showToast('✖ Došlo je do greške', 'error');
+      showToast(errorMessage ?? "Greška pri spremanju", 'error');
     } finally {
       setSubmitting(false);
     }
@@ -304,28 +308,22 @@ export default function DocumentsPage() {
         }
 
         // Delete metadata from database
-        const { error: deleteError } = await supabase
-          .from('documents')
-          .delete()
-          .eq('id', document.id);
-
-        if (deleteError) {
-          console.error('Database deletion error:', deleteError);
-          throw deleteError;
-        }
+        await deleteWithUserId(supabase, 'documents', 'id', document.id);
 
         // Reload documents after deletion
         await loadDocuments();
-        showToast('✔ Dokument uspješno obrisan', 'success');
+        showToast('Dokument uspješno obrisan', 'success');
       } catch (err) {
         console.error('Error deleting document:', {
           error: err,
           message: err instanceof Error ? err.message : 'Unknown error',
           stack: err instanceof Error ? err.stack : undefined
         });
+        
+        // Show more specific error message from Supabase
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete document. Please try again.';
         setError(errorMessage);
-        showToast('✖ Došlo je do greške', 'error');
+        showToast(errorMessage ?? "Greška pri spremanju", 'error');
       }
     }
   };

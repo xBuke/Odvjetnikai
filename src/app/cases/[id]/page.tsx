@@ -21,6 +21,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { selectSingleWithUserId } from '@/lib/supabaseHelpers';
 
 interface Client {
   id: string;
@@ -58,6 +60,7 @@ interface TimelineEvent {
 export default function CaseDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { session } = useAuth();
   const caseId = params.id as string;
 
   const [caseData, setCaseData] = useState<Case | null>(null);
@@ -133,20 +136,8 @@ export default function CaseDetailPage() {
       setError(null);
 
       // Fetch case with client information from Supabase
-      const { data: caseData, error: caseError } = await supabase
-        .from('cases')
-        .select('*, clients(name, email, phone, oib, notes)')
-        .eq('id', caseId)
-        .single();
-
-      if (caseError) {
-        throw caseError;
-      }
-
-      if (caseData) {
-        setCaseData(caseData);
-        // Client data is available through caseData.clients
-      }
+      const caseData = await selectSingleWithUserId(supabase, 'cases', 'id', caseId, '*, clients(name, email, phone, oib, notes)');
+      setCaseData(caseData);
     } catch (err) {
       console.error('Error loading case:', err);
       setError('Greška pri učitavanju detalja predmeta. Molimo pokušajte ponovno.');

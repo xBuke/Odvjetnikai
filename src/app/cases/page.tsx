@@ -20,6 +20,13 @@ import { FormField, FormInput, FormTextarea, FormSelect, FormActions } from '../
 import { supabase } from '@/lib/supabaseClient';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ui/Toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  selectWithUserId, 
+  insertAndReturnWithUserId, 
+  updateWithUserId, 
+  deleteWithUserId 
+} from '@/lib/supabaseHelpers';
 
 interface Client {
   id: string;
@@ -53,6 +60,7 @@ interface CaseWithClient extends Case {
 export default function CasesPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { session } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -83,19 +91,13 @@ export default function CasesPage() {
   // Load clients from Supabase
   const loadClients = async () => {
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
+      const data = await selectWithUserId(supabase, 'clients');
       setClients(data || []);
     } catch (err) {
       console.error('Error loading clients:', err);
-      setError('Greška pri učitavanju klijenata. Molimo pokušajte ponovno.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load clients. Please try again.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
   };
 
@@ -106,14 +108,7 @@ export default function CasesPage() {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
-        .from('cases')
-        .select('*, clients(name)')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
+      const data = await selectWithUserId(supabase, 'cases', {}, 'id, title, status, notes, created_at, clients(name)');
 
       // Transform data to include clientName and statusColor
       const casesWithClient: CaseWithClient[] = (data || []).map(caseItem => ({
@@ -125,7 +120,9 @@ export default function CasesPage() {
       setCases(casesWithClient);
     } catch (err) {
       console.error('Error loading cases:', err);
-      setError('Greška pri učitavanju predmeta. Molimo pokušajte ponovno.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load cases. Please try again.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     } finally {
       setLoading(false);
     }
@@ -173,36 +170,27 @@ export default function CasesPage() {
 
       if (editingCase) {
         // Update existing case
-        const { error } = await supabase
-          .from('cases')
-          .update({
+        await updateWithUserId(
+          supabase, 
+          'cases', 
+          'id', 
+          editingCase.id, 
+          {
             title: formData.title,
             client_id: parseInt(formData.client_id),
             status: formData.status,
             notes: formData.notes,
             updated_at: new Date().toISOString()
-          })
-          .eq('id', editingCase.id);
-
-        if (error) {
-          throw error;
-        }
+          }
+        );
       } else {
         // Add new case
-        const { data, error } = await supabase
-          .from('cases')
-          .insert([{
-            title: formData.title,
-            client_id: parseInt(formData.client_id),
-            status: formData.status,
-            notes: formData.notes
-          }])
-          .select()
-          .single();
-
-        if (error) {
-          throw error;
-        }
+        const data = await insertAndReturnWithUserId(supabase, 'cases', {
+          title: formData.title,
+          client_id: parseInt(formData.client_id),
+          status: formData.status,
+          notes: formData.notes
+        });
 
         console.log('Case created successfully:', data);
         showToast('✔ Predmet uspješno dodan', 'success');
@@ -223,8 +211,11 @@ export default function CasesPage() {
         message: err instanceof Error ? err.message : 'Unknown error',
         stack: err instanceof Error ? err.stack : undefined
       });
-      setError('Greška pri spremanju predmeta. Molimo pokušajte ponovno.');
-      showToast('✖ Došlo je do greške', 'error');
+      
+      // Show more specific error message
+      const errorMessage = err instanceof Error ? err.message : 'Greška pri spremanju predmeta. Molimo pokušajte ponovno.';
+      setError(errorMessage);
+      showToast(errorMessage ?? "Greška pri spremanju", 'error');
     } finally {
       setSubmitting(false);
     }
@@ -248,21 +239,22 @@ export default function CasesPage() {
       try {
         setError(null);
 
-
-        const { error } = await supabase
-          .from('cases')
-          .delete()
-          .eq('id', caseId);
-
-        if (error) {
-          throw error;
-        }
+        await deleteWithUserId(supabase, 'cases', 'id', caseId);
 
         // Reload cases after deletion
         await loadCases();
+        showToast('✔ Predmet uspješno obrisan', 'success');
       } catch (err) {
-        console.error('Error deleting case:', err);
-        setError('Greška pri brisanju predmeta. Molimo pokušajte ponovno.');
+        console.error('Error deleting case:', {
+          error: err,
+          message: err instanceof Error ? err.message : 'Unknown error',
+          stack: err instanceof Error ? err.stack : undefined
+        });
+        
+        // Show more specific error message
+        const errorMessage = err instanceof Error ? err.message : 'Greška pri brisanju predmeta. Molimo pokušajte ponovno.';
+        setError(errorMessage);
+        showToast(errorMessage ?? "Greška pri spremanju", 'error');
       }
     }
   };

@@ -15,23 +15,6 @@ import { supabase } from '@/lib/supabaseClient';
 import { useEffect } from 'react';
 
 export default function Dashboard() {
-  // Test Supabase connection
-  useEffect(() => {
-    const testSupabaseConnection = async () => {
-      try {
-        const { data, error } = await supabase.from("clients").select("*");
-        if (error) {
-          console.error('Supabase connection error:', error);
-        } else {
-          console.log('Supabase connection successful! Clients data:', data);
-        }
-      } catch (err) {
-        console.error('Failed to connect to Supabase:', err);
-      }
-    };
-
-    testSupabaseConnection();
-  }, []);
 
   // Safe access to language context
   let t: (key: string) => string;

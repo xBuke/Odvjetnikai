@@ -7,14 +7,12 @@ import {
   Printer, 
   ArrowLeft,
   Calendar,
-  User,
   Briefcase,
   Clock,
   DollarSign,
   Loader2
 } from 'lucide-react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 

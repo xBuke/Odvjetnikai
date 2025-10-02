@@ -4,7 +4,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
 
 // Only throw errors in production if environment variables are missing
-if (process.env.NODE_ENV === 'production') {
+// Skip this check during build process to allow static generation
+if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_VERCEL_ENV) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
   }

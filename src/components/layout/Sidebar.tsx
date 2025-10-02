@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -10,7 +9,6 @@ import {
   Calendar, 
   FolderOpen, 
   CreditCard,
-  Menu,
   X
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -37,7 +35,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
   try {
     const languageContext = useLanguage();
     t = languageContext.t;
-  } catch (error) {
+  } catch {
     // Fallback function if context is not available
     const fallbackTranslations: Record<string, string> = {
       'nav.dashboard': 'Nadzorna ploča',

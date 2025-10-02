@@ -12,7 +12,7 @@ export default function ThemeToggle() {
     const themeContext = useTheme();
     theme = themeContext.theme;
     toggleTheme = themeContext.toggleTheme;
-  } catch (error) {
+  } catch {
     // Fallback values if context is not available
     console.warn('Theme context not available, using fallback values');
   }

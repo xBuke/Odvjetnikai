@@ -22,7 +22,7 @@ export default function LoginPage() {
   try {
     const languageContext = useLanguage();
     t = languageContext.t;
-  } catch (error) {
+  } catch {
     // Fallback function if context is not available
     t = (key: string) => key;
   }
@@ -46,7 +46,7 @@ export default function LoginPage() {
       } else {
         router.push('/');
       }
-    } catch (err) {
+    } catch {
       setError(t('auth.unexpectedError'));
     } finally {
       setLoading(false);

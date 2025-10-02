@@ -11,8 +11,7 @@ import {
   File,
   Eye,
   Share2,
-  Edit,
-  Trash2
+  Edit
 } from 'lucide-react';
 
 interface Case {
@@ -39,39 +38,6 @@ export default function DocumentDetailPage() {
   const router = useRouter();
   const documentId = parseInt(params.id as string);
 
-  // Mock cases data (same as in main documents page)
-  const mockCases: Case[] = [
-    {
-      id: 1,
-      title: 'Smith vs. Johnson Corp Contract Dispute',
-      clientName: 'John Smith',
-      status: 'In Progress'
-    },
-    {
-      id: 2,
-      title: 'Garcia Real Estate Transaction',
-      clientName: 'Maria Garcia',
-      status: 'Open'
-    },
-    {
-      id: 3,
-      title: 'Johnson Family Law Matter',
-      clientName: 'David Johnson',
-      status: 'Closed'
-    },
-    {
-      id: 4,
-      title: 'Wilson Business Formation',
-      clientName: 'Sarah Wilson',
-      status: 'In Progress'
-    },
-    {
-      id: 5,
-      title: 'Brown Patent Application',
-      clientName: 'Michael Brown',
-      status: 'Open'
-    }
-  ];
 
   // Mock documents data with additional details
   const mockDocuments: Document[] = [
@@ -260,7 +226,7 @@ Net Income: $400,000`
       setDocument(foundDocument);
     }
     setLoading(false);
-  }, [documentId]);
+  }, [documentId, mockDocuments]);
 
   // Handle download
   const handleDownload = () => {

@@ -38,7 +38,7 @@ export default function ClientsPage() {
   try {
     const languageContext = useLanguage();
     t = languageContext.t;
-  } catch (error) {
+  } catch {
     // Fallback function if context is not available
     t = (key: string) => key;
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft, 
@@ -61,7 +61,6 @@ export default function CaseDetailPage() {
   const caseId = parseInt(params.id as string);
 
   const [caseData, setCaseData] = useState<Case | null>(null);
-  const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
@@ -128,7 +127,7 @@ export default function CaseDetailPage() {
 
 
   // Load case data from Supabase
-  const loadCaseData = async () => {
+  const loadCaseData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -146,17 +145,7 @@ export default function CaseDetailPage() {
 
       if (caseData) {
         setCaseData(caseData);
-        // Set client data from the joined query
-        if (caseData.clients) {
-          setClient({
-            id: caseData.client_id,
-            name: caseData.clients.name,
-            email: caseData.clients.email,
-            phone: caseData.clients.phone,
-            oib: caseData.clients.oib,
-            notes: caseData.clients.notes
-          });
-        }
+        // Client data is available through caseData.clients
       }
     } catch (err) {
       console.error('Error loading case:', err);
@@ -164,11 +153,11 @@ export default function CaseDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [caseId]);
 
   useEffect(() => {
     loadCaseData();
-  }, [caseId]);
+  }, [loadCaseData]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {

@@ -21,7 +21,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
   try {
     const languageContext = useLanguage();
     t = languageContext.t;
-  } catch (error) {
+  } catch {
     // Fallback function if context is not available
     const fallbackTranslations: Record<string, string> = {
       'nav.dashboard': 'Dashboard',

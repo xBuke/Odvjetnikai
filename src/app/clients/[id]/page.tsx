@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft, 
@@ -8,7 +8,6 @@ import {
   Mail, 
   Phone, 
   FileText, 
-  Calendar,
   Download,
   Eye,
   CheckCircle,
@@ -130,7 +129,7 @@ export default function ClientDetailPage() {
 
 
   // Load client data from Supabase
-  const loadClientData = async () => {
+  const loadClientData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -155,11 +154,11 @@ export default function ClientDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
 
   useEffect(() => {
     loadClientData();
-  }, [clientId]);
+  }, [loadClientData]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {

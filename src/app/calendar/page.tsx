@@ -56,7 +56,7 @@ export default function CalendarPage() {
   try {
     const languageContext = useLanguage();
     t = languageContext.t;
-  } catch (error) {
+  } catch {
     // Fallback function if context is not available
     t = (key: string) => key;
   }
@@ -260,7 +260,7 @@ export default function CalendarPage() {
     setNewEvent({ title: '', case_id: '', due_date: '', time: '' });
   };
 
-  const eventStyleGetter = (event: Event) => {
+  const eventStyleGetter = (_event: Event) => {
     const backgroundColor = '#3174ad';
     const borderColor = '#3174ad';
     return {

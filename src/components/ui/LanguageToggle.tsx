@@ -14,7 +14,7 @@ export default function LanguageToggle() {
     language = languageContext.language;
     toggleLanguage = languageContext.toggleLanguage;
     t = languageContext.t;
-  } catch (error) {
+  } catch {
     // Fallback values if context is not available
     console.warn('Language context not available, using fallback values');
   }

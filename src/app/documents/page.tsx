@@ -7,10 +7,8 @@ import {
   Download, 
   X,
   FileText,
-  Upload,
   File,
   Calendar,
-  User,
   FolderOpen,
   FileCheck,
   Trash2,
@@ -53,7 +51,7 @@ export default function DocumentsPage() {
   try {
     const languageContext = useLanguage();
     t = languageContext.t;
-  } catch (error) {
+  } catch {
     // Fallback function if context is not available
     t = (key: string) => key;
   }
@@ -210,7 +208,7 @@ export default function DocumentsPage() {
 
       // Upload file to Supabase Storage
       const fileName = `${Date.now()}_${selectedFile.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('documents')
         .upload(`docs/${fileName}`, selectedFile);
 

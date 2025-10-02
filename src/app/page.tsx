@@ -3,7 +3,6 @@
 import { 
   Users, 
   FileText, 
-  Calendar, 
   Upload,
   TrendingUp,
   Clock,
@@ -39,7 +38,7 @@ export default function Dashboard() {
   try {
     const languageContext = useLanguage();
     t = languageContext.t;
-  } catch (error) {
+  } catch {
     // Fallback function if context is not available
     const fallbackTranslations: Record<string, string> = {
       'nav.dashboard': 'Nadzorna ploča',

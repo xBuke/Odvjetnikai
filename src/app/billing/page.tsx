@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   FileText, 
@@ -78,7 +78,7 @@ export default function BillingPage() {
   try {
     const languageContext = useLanguage();
     t = languageContext.t;
-  } catch (error) {
+  } catch {
     // Fallback function if context is not available
     t = (key: string) => key;
   }
@@ -109,7 +109,7 @@ export default function BillingPage() {
   ]);
 
   // Load clients from Supabase
-  const loadClients = async () => {
+  const loadClients = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('clients')
@@ -125,10 +125,10 @@ export default function BillingPage() {
       console.error('Error loading clients:', err);
       setError(t('billing.failedToLoadClients'));
     }
-  };
+  }, [t]);
 
   // Load cases from Supabase
-  const loadCases = async () => {
+  const loadCases = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('cases')
@@ -144,10 +144,10 @@ export default function BillingPage() {
       console.error('Error loading cases:', err);
       setError(t('billing.failedToLoadCases'));
     }
-  };
+  }, [t]);
 
   // Load billing entries from Supabase with client and case joins
-  const loadBillingEntries = async () => {
+  const loadBillingEntries = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -175,14 +175,14 @@ export default function BillingPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   // Load all data on component mount
   useEffect(() => {
     loadClients();
     loadCases();
     loadBillingEntries();
-  }, []);
+  }, [loadClients, loadCases, loadBillingEntries]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

@@ -60,7 +60,7 @@ export function FormInput({
       max={max}
       step={step}
       maxLength={maxLength}
-      className={`w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-[var(--gold)] focus:border-[var(--gold)] bg-input text-foreground transition-all duration-300 shadow-sm hover:shadow-md ${className}`}
+      className={`w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-ring bg-input text-foreground transition-all duration-300 shadow-sm hover:shadow-md ${className}`}
     />
   );
 }
@@ -92,7 +92,7 @@ export function FormTextarea({
       placeholder={placeholder}
       required={required}
       rows={rows}
-      className={`w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-[var(--gold)] focus:border-[var(--gold)] bg-input text-foreground transition-all duration-300 shadow-sm hover:shadow-md ${className}`}
+      className={`w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-ring bg-input text-foreground transition-all duration-300 shadow-sm hover:shadow-md ${className}`}
     />
   );
 }
@@ -120,7 +120,7 @@ export function FormSelect({
       value={value}
       onChange={onChange}
       required={required}
-      className={`w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-[var(--gold)] focus:border-[var(--gold)] bg-input text-foreground transition-all duration-300 shadow-sm hover:shadow-md ${className}`}
+      className={`w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-ring bg-input text-foreground transition-all duration-300 shadow-sm hover:shadow-md ${className}`}
     >
       {children}
     </select>

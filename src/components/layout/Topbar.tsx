@@ -61,13 +61,13 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         <div className="flex items-center">
           <button
             onClick={onMenuClick}
-            className="lg:hidden p-2 rounded-lg hover:bg-[var(--light-gray)] transition-colors duration-200"
+            className="lg:hidden p-2 rounded-lg hover:bg-accent transition-colors duration-200"
           >
-            <Menu className="w-6 h-6 text-[var(--navy)]" />
+            <Menu className="w-6 h-6 text-foreground" />
           </button>
           
           {/* Page title - dynamic based on current page */}
-          <h1 className="ml-4 lg:ml-0 text-2xl font-bold text-[var(--navy)] font-serif">
+          <h1 className="ml-4 lg:ml-0 text-2xl font-bold text-foreground font-serif">
             {getPageTitle()}
           </h1>
         </div>
@@ -82,11 +82,11 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
           {/* User avatar and info */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-[var(--gold)] rounded-full flex items-center justify-center shadow-md">
-              <User className="w-5 h-5 text-[var(--navy)]" />
+            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center shadow-md">
+              <User className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="hidden sm:block">
-              <p className="text-sm font-semibold text-[var(--navy)]">John Doe</p>
+              <p className="text-sm font-semibold text-foreground">John Doe</p>
               <p className="text-xs text-muted-foreground">Senior Partner</p>
             </div>
           </div>

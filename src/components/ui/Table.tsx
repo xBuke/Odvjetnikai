@@ -35,15 +35,15 @@ export default function Table({
   const cellRenderer = renderCell || defaultRenderCell;
 
   return (
-    <div className={`bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-border overflow-hidden ${className}`}>
+    <div className={`bg-card backdrop-blur-sm rounded-xl shadow-lg border border-border overflow-hidden ${className}`}>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-[var(--light-gray)]">
+          <thead className="bg-muted">
             <tr>
               {columns.map((column) => (
                 <th 
                   key={column.key}
-                  className={`px-6 py-4 text-left text-xs font-semibold text-[var(--navy)] uppercase tracking-wider ${column.className || ''}`}
+                  className={`px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider ${column.className || ''}`}
                 >
                   {column.label}
                 </th>
@@ -55,9 +55,9 @@ export default function Table({
               data.map((item, index) => (
                 <tr 
                   key={index}
-                  className={`hover:bg-[var(--light-gray)]/50 transition-all duration-300 ${
+                  className={`hover:bg-accent/50 transition-all duration-300 ${
                     onRowClick ? 'cursor-pointer hover:shadow-sm' : ''
-                  } ${index % 2 === 0 ? 'bg-card' : 'bg-[var(--light-gray)]/20'}`}
+                  } ${index % 2 === 0 ? 'bg-card' : 'bg-muted/20'}`}
                   onClick={() => onRowClick?.(item, index)}
                 >
                   {columns.map((column) => (

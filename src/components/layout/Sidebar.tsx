@@ -61,24 +61,24 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       
       {/* Sidebar */}
       <div className={`
-        fixed top-0 left-0 h-full bg-[var(--navy)] border-r border-[var(--navy-light)] z-50 transition-transform duration-300 ease-in-out
+        fixed top-0 left-0 h-full bg-card border-r border-border z-50 transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:fixed lg:z-auto
         w-64 shadow-xl
       `}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[var(--navy-light)]">
+        <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-[var(--gold)] rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-[var(--navy)] font-bold text-xl font-serif">L</span>
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-primary-foreground font-bold text-xl font-serif">L</span>
             </div>
-            <span className="text-xl font-semibold text-white font-serif">LawFirm</span>
+            <span className="text-xl font-semibold text-card-foreground font-serif">LawFirm</span>
           </div>
           <button
             onClick={onToggle}
-            className="lg:hidden p-2 rounded-md hover:bg-[var(--navy-light)] transition-colors duration-200"
+            className="lg:hidden p-2 rounded-md hover:bg-accent transition-colors duration-200"
           >
-            <X className="w-5 h-5 text-white" />
+            <X className="w-5 h-5 text-card-foreground" />
           </button>
         </div>
 
@@ -94,12 +94,12 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                     href={item.href}
                     className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
                       isActive 
-                        ? 'bg-[var(--gold)] text-[var(--navy)] shadow-lg' 
-                        : 'text-white/80 hover:bg-[var(--navy-light)] hover:text-white hover:shadow-md'
+                        ? 'bg-primary text-primary-foreground shadow-lg' 
+                        : 'text-card-foreground/80 hover:bg-accent hover:text-accent-foreground hover:shadow-md'
                     }`}
                   >
                     <Icon className={`w-5 h-5 transition-all duration-300 ${
-                      isActive ? 'text-[var(--navy)]' : 'text-white/80 group-hover:text-white group-hover:drop-shadow-sm'
+                      isActive ? 'text-primary-foreground' : 'text-card-foreground/80 group-hover:text-accent-foreground group-hover:drop-shadow-sm'
                     }`} />
                     <span className="font-medium">{t(item.name)}</span>
                   </Link>
@@ -110,8 +110,8 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-[var(--navy-light)] bg-[var(--navy)]">
-          <div className="text-xs text-white/60 text-center">
+        <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-border bg-card">
+          <div className="text-xs text-muted-foreground text-center">
             © 2024 LawFirm SaaS
           </div>
         </div>

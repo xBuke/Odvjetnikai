@@ -46,7 +46,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[var(--light-gray)] to-white text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
       

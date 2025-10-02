@@ -162,7 +162,7 @@ export default function ClientsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Clients</h2>
-            <p className="text-muted-foreground text-sm sm:text-base">Manage your law firm's client database.</p>
+            <p className="text-muted-foreground text-sm sm:text-base">Manage your law firm&apos;s client database.</p>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
@@ -350,8 +350,8 @@ export default function ClientsPage() {
 
           <FormActions
             onCancel={handleModalClose}
-            onSubmit={handleSubmit}
-            submitText={editingClient ? 'Update Client' : 'Add Client'}
+            onSubmit={() => {}}
+            submitText={editingClient ? 'Update Client' : 'Add Client'} 
           />
         </form>
       </Modal>

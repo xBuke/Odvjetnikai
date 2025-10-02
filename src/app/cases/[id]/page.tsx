@@ -16,7 +16,8 @@ import {
   Gavel,
   MessageSquare,
   ExternalLink,
-  FolderOpen
+  FolderOpen,
+  X
 } from 'lucide-react';
 
 interface Client {
@@ -46,7 +47,7 @@ interface TimelineEvent {
   description: string;
   date: string;
   time: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   iconColor: string;
 }
 
@@ -317,7 +318,7 @@ export default function CaseDetailPage() {
           <div className="text-center py-12">
             <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">Case Not Found</h2>
-            <p className="text-muted-foreground">The case you're looking for doesn't exist.</p>
+            <p className="text-muted-foreground">The case you&apos;re looking for doesn&apos;t exist.</p>
           </div>
         </div>
       </div>

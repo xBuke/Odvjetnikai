@@ -318,7 +318,7 @@ Net Income: $400,000`
         <div className="text-center">
           <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-foreground mb-2">Document Not Found</h2>
-          <p className="text-muted-foreground mb-4">The document you're looking for doesn't exist.</p>
+          <p className="text-muted-foreground mb-4">The document you&apos;re looking for doesn&apos;t exist.</p>
           <button
             onClick={handleBack}
             className="flex items-center space-x-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors duration-200 mx-auto"

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
+import { Calendar, momentLocalizer, Views, View } from 'react-big-calendar';
 import moment from 'moment';
 import { Plus } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
@@ -68,7 +68,7 @@ interface NewEvent {
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<Event[]>(initialEvents);
-  const [view, setView] = useState(Views.MONTH);
+  const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
   const [newEvent, setNewEvent] = useState<NewEvent>({
@@ -205,6 +205,7 @@ export default function CalendarPage() {
         <form onSubmit={(e) => { e.preventDefault(); handleAddEvent(); }} className="space-y-4">
           <FormField label="Title" required>
             <FormInput
+              name="title"
               value={newEvent.title}
               onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
               placeholder="Enter deadline title"
@@ -214,6 +215,7 @@ export default function CalendarPage() {
 
           <FormField label="Case" required>
             <FormSelect
+              name="case"
               value={newEvent.case}
               onChange={(e) => setNewEvent({ ...newEvent, case: e.target.value })}
               required
@@ -229,6 +231,7 @@ export default function CalendarPage() {
 
           <FormField label="Date" required>
             <FormInput
+              name="date"
               type="date"
               value={newEvent.date}
               onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
@@ -238,6 +241,7 @@ export default function CalendarPage() {
 
           <FormField label="Time" required>
             <FormInput
+              name="time"
               type="time"
               value={newEvent.time}
               onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}

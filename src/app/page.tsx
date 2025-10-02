@@ -183,7 +183,7 @@ export default function Dashboard() {
       {/* Welcome Section */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 lg:p-6">
         <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground mb-1 sm:mb-2">{t('nav.dashboard')}</h2>
-        <p className="text-muted-foreground text-sm sm:text-base">Overview of your law firm's key metrics and activities.</p>
+        <p className="text-muted-foreground text-sm sm:text-base">Overview of your law firm&apos;s key metrics and activities.</p>
       </div>
 
       {/* Stats Grid */}

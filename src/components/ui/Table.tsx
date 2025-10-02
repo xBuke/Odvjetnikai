@@ -11,9 +11,9 @@ interface TableColumn {
 
 interface TableProps {
   columns: TableColumn[];
-  data: any[];
-  renderCell?: (column: TableColumn, item: any, index: number) => ReactNode;
-  onRowClick?: (item: any, index: number) => void;
+  data: Record<string, unknown>[];
+  renderCell?: (column: TableColumn, item: Record<string, unknown>, index: number) => ReactNode;
+  onRowClick?: (item: Record<string, unknown>, index: number) => void;
   emptyMessage?: string;
   emptyIcon?: ReactNode;
   className?: string;
@@ -28,8 +28,8 @@ export default function Table({
   emptyIcon,
   className = ""
 }: TableProps) {
-  const defaultRenderCell = (column: TableColumn, item: any) => {
-    return item[column.key];
+  const defaultRenderCell = (column: TableColumn, item: Record<string, unknown>): ReactNode => {
+    return item[column.key] as ReactNode;
   };
 
   const cellRenderer = renderCell || defaultRenderCell;

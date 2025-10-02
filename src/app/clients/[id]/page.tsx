@@ -235,7 +235,7 @@ export default function ClientDetailPage() {
           <div className="text-center py-12">
             <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">Client Not Found</h2>
-            <p className="text-muted-foreground">The client you're looking for doesn't exist.</p>
+            <p className="text-muted-foreground">The client you&apos;re looking for doesn&apos;t exist.</p>
           </div>
         </div>
       </div>

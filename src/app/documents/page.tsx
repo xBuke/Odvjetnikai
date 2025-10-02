@@ -204,7 +204,7 @@ export default function DocumentsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-foreground mb-2">Documents</h2>
-            <p className="text-muted-foreground">Manage your law firm's documents and templates.</p>
+            <p className="text-muted-foreground">Manage your law firm&apos;s documents and templates.</p>
           </div>
           <button
             onClick={() => setIsUploadModalOpen(true)}

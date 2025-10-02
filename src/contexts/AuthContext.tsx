@@ -8,9 +8,10 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, username: string) => Promise<{ error: Error | null }>;
+  signIn: (username: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<{ error: Error | null }>;
+  checkUsernameAvailability: (username: string) => Promise<{ available: boolean; error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,17 +60,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, username: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          username: username,
+        },
+      },
     });
     return { error };
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (username: string, password: string) => {
+    // First, get the email by username using the database function
+    const { data: emailData, error: emailError } = await supabase
+      .rpc('get_email_by_username', { username_param: username });
+
+    if (emailError || !emailData) {
+      return { error: new Error('Korisničko ime nije pronađeno') };
+    }
+
+    // Then sign in with email and password
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: emailData,
       password,
     });
     return { error };
@@ -80,6 +95,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return { error };
   };
 
+  const checkUsernameAvailability = async (username: string) => {
+    const { data, error } = await supabase
+      .rpc('is_username_available', { username_param: username });
+    
+    if (error) {
+      return { available: false, error };
+    }
+    
+    return { available: data, error: null };
+  };
+
   const value = {
     user,
     session,
@@ -87,6 +113,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signUp,
     signIn,
     signOut,
+    checkUsernameAvailability,
   };
 
   return (

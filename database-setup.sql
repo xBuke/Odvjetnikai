@@ -7,6 +7,14 @@ ALTER DATABASE postgres SET "app.jwt_secret" TO 'your-jwt-secret';
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Create profiles table for user information
+CREATE TABLE IF NOT EXISTS profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create clients table
 CREATE TABLE IF NOT EXISTS clients (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -36,10 +44,13 @@ CREATE TABLE IF NOT EXISTS cases (
 -- Create documents table
 CREATE TABLE IF NOT EXISTS documents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     case_id UUID REFERENCES cases(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    file_path VARCHAR(500),
-    document_type VARCHAR(100),
+    name VARCHAR(255) NOT NULL,
+    file_url VARCHAR(500),
+    file_size BIGINT,
+    file_type VARCHAR(100),
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -70,25 +81,53 @@ CREATE TABLE IF NOT EXISTS calendar_events (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create deadlines table
+CREATE TABLE IF NOT EXISTS deadlines (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    case_id UUID REFERENCES cases(id) ON DELETE CASCADE,
+    due_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_profiles_username ON profiles(username);
 CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
 CREATE INDEX IF NOT EXISTS idx_clients_oib ON clients(oib);
 CREATE INDEX IF NOT EXISTS idx_cases_client_id ON cases(client_id);
 CREATE INDEX IF NOT EXISTS idx_documents_case_id ON documents(case_id);
+CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id);
 CREATE INDEX IF NOT EXISTS idx_billing_client_id ON billing(client_id);
 CREATE INDEX IF NOT EXISTS idx_billing_case_id ON billing(case_id);
 CREATE INDEX IF NOT EXISTS idx_calendar_events_start_time ON calendar_events(start_time);
+CREATE INDEX IF NOT EXISTS idx_deadlines_user_id ON deadlines(user_id);
+CREATE INDEX IF NOT EXISTS idx_deadlines_case_id ON deadlines(case_id);
+CREATE INDEX IF NOT EXISTS idx_deadlines_due_date ON deadlines(due_date);
 
 -- Enable Row Level Security (RLS)
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE billing ENABLE ROW LEVEL SECURITY;
 ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE deadlines ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for authenticated users
 -- For now, we'll allow all operations for authenticated users
 -- You can make these more restrictive based on your needs
+
+-- Profiles policies
+CREATE POLICY "Users can view their own profile" ON profiles
+    FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can insert their own profile" ON profiles
+    FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update their own profile" ON profiles
+    FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can delete their own profile" ON profiles
+    FOR DELETE USING (auth.uid() = id);
 
 -- Clients policies
 CREATE POLICY "Allow all operations for authenticated users" ON clients
@@ -99,8 +138,14 @@ CREATE POLICY "Allow all operations for authenticated users" ON cases
     FOR ALL USING (auth.role() = 'authenticated');
 
 -- Documents policies
-CREATE POLICY "Allow all operations for authenticated users" ON documents
-    FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Users can view their own documents" ON documents
+    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own documents" ON documents
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own documents" ON documents
+    FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own documents" ON documents
+    FOR DELETE USING (auth.uid() = user_id);
 
 -- Billing policies
 CREATE POLICY "Allow all operations for authenticated users" ON billing
@@ -109,6 +154,16 @@ CREATE POLICY "Allow all operations for authenticated users" ON billing
 -- Calendar events policies
 CREATE POLICY "Allow all operations for authenticated users" ON calendar_events
     FOR ALL USING (auth.role() = 'authenticated');
+
+-- Deadlines policies
+CREATE POLICY "Users can view their own deadlines" ON deadlines
+    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own deadlines" ON deadlines
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own deadlines" ON deadlines
+    FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own deadlines" ON deadlines
+    FOR DELETE USING (auth.uid() = user_id);
 
 -- Insert some sample data
 INSERT INTO clients (id, name, email, phone, oib, notes) VALUES
@@ -177,3 +232,49 @@ INSERT INTO calendar_events (id, title, description, start_time, end_time, clien
 --   'true',
 --   'auth.role() = ''authenticated'''
 -- );
+
+-- Function to automatically create a profile when a user signs up
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, username)
+  VALUES (NEW.id, NEW.raw_user_meta_data->>'username');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to automatically create profile on user signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Function to get email by username
+CREATE OR REPLACE FUNCTION public.get_email_by_username(username_param TEXT)
+RETURNS TEXT AS $$
+DECLARE
+  user_email TEXT;
+BEGIN
+  SELECT au.email INTO user_email
+  FROM auth.users au
+  JOIN public.profiles p ON au.id = p.id
+  WHERE p.username = username_param;
+  
+  RETURN user_email;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to check if username is available
+CREATE OR REPLACE FUNCTION public.is_username_available(username_param TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  username_exists BOOLEAN;
+BEGIN
+  SELECT EXISTS(
+    SELECT 1 FROM public.profiles 
+    WHERE username = username_param
+  ) INTO username_exists;
+  
+  RETURN NOT username_exists;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

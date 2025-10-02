@@ -193,7 +193,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   // Prevent hydration mismatch
   if (!mounted) {
-    return <div>{children}</div>;
+    return <div suppressHydrationWarning>{children}</div>;
   }
 
   return (

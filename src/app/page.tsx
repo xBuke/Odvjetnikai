@@ -21,7 +21,10 @@ export default function Dashboard() {
     t = languageContext.t;
   } catch (error) {
     // Fallback function if context is not available
-    t = (key: string) => key;
+    const fallbackTranslations: Record<string, string> = {
+      'nav.dashboard': 'Dashboard',
+    };
+    t = (key: string) => fallbackTranslations[key] || key;
   }
   // Mock data for stat cards
   const stats = [

@@ -39,7 +39,15 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
     t = languageContext.t;
   } catch (error) {
     // Fallback function if context is not available
-    t = (key: string) => key;
+    const fallbackTranslations: Record<string, string> = {
+      'nav.dashboard': 'Dashboard',
+      'nav.clients': 'Clients',
+      'nav.cases': 'Cases',
+      'nav.calendar': 'Calendar',
+      'nav.documents': 'Documents',
+      'nav.billing': 'Billing',
+    };
+    t = (key: string) => fallbackTranslations[key] || key;
   }
   return (
     <>

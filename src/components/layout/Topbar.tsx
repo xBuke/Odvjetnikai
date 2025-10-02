@@ -55,7 +55,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
   };
 
   return (
-    <header className="fixed top-0 right-0 left-0 lg:left-64 bg-white/95 backdrop-blur-md border-b border-border px-4 py-4 lg:px-6 z-40 shadow-sm">
+    <header className="fixed top-0 right-0 left-0 lg:left-64 bg-background/95 backdrop-blur-md border-b border-border px-4 py-4 lg:px-6 z-40 shadow-sm">
       <div className="flex items-center justify-between">
         {/* Left side - Menu button for mobile */}
         <div className="flex items-center">

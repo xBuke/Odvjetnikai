@@ -53,6 +53,15 @@
   --card-foreground: #ffffff;
   --popover: #1a3a5c;
   --popover-foreground: #ffffff;
+  
+  /* Law Firm specific colors - Dark mode */
+  --navy: #ffffff;
+  --navy-light: #e2e8f0;
+  --gold: #C9A227;
+  --gold-light: #D4B547;
+  --gold-dark: #B8941F;
+  --light-gray: #1a3a5c;
+  --gray: #94a3b8;
 }
 
 @theme inline {
@@ -92,12 +101,22 @@
 }
 
 body {
-  background: linear-gradient(135deg, #F7F7F7 0%, #ffffff 100%);
+  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   line-height: 1.6;
   overflow-x: hidden;
   min-height: 100vh;
+}
+
+/* Light mode background gradient */
+:root body {
+  background: linear-gradient(135deg, #F7F7F7 0%, #ffffff 100%);
+}
+
+/* Dark mode background gradient */
+.dark body {
+  background: linear-gradient(135deg, #0A2540 0%, #1a3a5c 100%);
 }
 
 /* Typography classes */
@@ -134,18 +153,42 @@ h3 {
 
 /* Enhanced card styles */
 .card {
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(10, 37, 64, 0.1);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 1rem;
-  box-shadow: 0 4px 6px -1px rgba(10, 37, 64, 0.1), 0 2px 4px -1px rgba(10, 37, 64, 0.06);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(10px);
 }
 
 .card:hover {
-  box-shadow: 0 10px 15px -3px rgba(10, 37, 64, 0.15), 0 4px 6px -2px rgba(10, 37, 64, 0.1);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
+  background: var(--card);
+}
+
+/* Light mode specific card styles */
+:root .card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(10, 37, 64, 0.1);
+  box-shadow: 0 4px 6px -1px rgba(10, 37, 64, 0.1), 0 2px 4px -1px rgba(10, 37, 64, 0.06);
+}
+
+:root .card:hover {
+  box-shadow: 0 10px 15px -3px rgba(10, 37, 64, 0.15), 0 4px 6px -2px rgba(10, 37, 64, 0.1);
   background: rgba(255, 255, 255, 1);
+}
+
+/* Dark mode specific card styles */
+.dark .card {
+  background: rgba(26, 58, 92, 0.95);
+  border: 1px solid rgba(51, 65, 85, 0.3);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+.dark .card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  background: rgba(26, 58, 92, 1);
 }
 
 /* Professional button styles */
@@ -173,8 +216,8 @@ h3 {
 
 .btn-secondary {
   background: var(--background);
-  color: var(--navy);
-  border: 2px solid var(--navy);
+  color: var(--foreground);
+  border: 2px solid var(--border);
   padding: 0.75rem 1.5rem;
   border-radius: 0.5rem;
   font-weight: 600;
@@ -182,15 +225,15 @@ h3 {
 }
 
 .btn-secondary:hover {
-  background: var(--navy);
-  color: var(--background);
+  background: var(--accent);
+  color: var(--accent-foreground);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(10, 37, 64, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .btn-secondary:active {
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(10, 37, 64, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Ensure proper box-sizing for all elements */
@@ -293,6 +336,31 @@ html {
   background: rgba(239, 68, 68, 0.1);
   color: #dc2626;
   border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Dark mode status badges */
+.dark .status-active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.dark .status-pending {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.dark .status-completed {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.dark .status-cancelled {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 /* Responsive improvements */

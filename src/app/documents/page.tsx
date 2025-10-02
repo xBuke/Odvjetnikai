@@ -17,19 +17,20 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/components/ui/Toast';
 
 interface Case {
-  id: number;
+  id: string;
   title: string;
   clientName: string;
   status: 'Open' | 'In Progress' | 'Closed';
 }
 
 interface Document {
-  id: number;
+  id: string;
   name: string;
   file_url: string;
-  case_id: number | null;
+  case_id: string | null;
   uploaded_at: string;
   file_size?: number;
   file_type?: string;
@@ -39,13 +40,15 @@ interface Document {
 }
 
 interface Template {
-  id: number;
+  id: string;
   name: string;
   description: string;
   category: string;
 }
 
 export default function DocumentsPage() {
+  const { showToast } = useToast();
+  
   // Safe access to language context
   let t: (key: string) => string;
   try {
@@ -66,13 +69,13 @@ export default function DocumentsPage() {
   // Mock templates data
   const mockTemplates: Template[] = [
     {
-      id: 1,
+      id: 'template-1-uuid-1234-5678-9abc-def012345678',
       name: 'Ugovor',
       description: 'Standardni predložak pravnog ugovora',
       category: 'Poslovno'
     },
     {
-      id: 2,
+      id: 'template-2-uuid-2345-6789-abcd-ef0123456789',
       name: 'Punomoć',
       description: 'Predložak dokumenta punomoći',
       category: 'Pravno'
@@ -243,10 +246,16 @@ export default function DocumentsPage() {
       setUploadFormData({ name: '', caseId: '', type: '' });
       setSelectedFile(null);
       setIsUploadModalOpen(false);
+      showToast('✔ Dokument uspješno učitavan', 'success');
     } catch (err) {
-      console.error('Error uploading file:', err);
+      console.error('Error uploading file:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      });
       const errorMessage = err instanceof Error ? err.message : 'Failed to upload document. Please try again.';
       setError(errorMessage);
+      showToast('✖ Došlo je do greške', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -307,10 +316,16 @@ export default function DocumentsPage() {
 
         // Reload documents after deletion
         await loadDocuments();
+        showToast('✔ Dokument uspješno obrisan', 'success');
       } catch (err) {
-        console.error('Error deleting document:', err);
+        console.error('Error deleting document:', {
+          error: err,
+          message: err instanceof Error ? err.message : 'Unknown error',
+          stack: err instanceof Error ? err.stack : undefined
+        });
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete document. Please try again.';
         setError(errorMessage);
+        showToast('✖ Došlo je do greške', 'error');
       }
     }
   };

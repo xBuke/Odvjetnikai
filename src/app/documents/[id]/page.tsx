@@ -15,16 +15,16 @@ import {
 } from 'lucide-react';
 
 interface Case {
-  id: number;
+  id: string;
   title: string;
   clientName: string;
   status: 'Open' | 'In Progress' | 'Closed';
 }
 
 interface Document {
-  id: number;
+  id: string;
   name: string;
-  caseId: number | null;
+  caseId: string | null;
   caseTitle: string | null;
   uploadedDate: string;
   size: string;
@@ -36,15 +36,15 @@ interface Document {
 export default function DocumentDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const documentId = parseInt(params.id as string);
+  const documentId = params.id as string;
 
 
   // Mock documents data with additional details
   const mockDocuments: Document[] = [
     {
-      id: 1,
+      id: 'doc-1-uuid-1234-5678-9abc-def012345678',
       name: 'Ugovor o suradnji - Zagrebačka banka.pdf',
-      caseId: 1,
+      caseId: 'case-1-uuid-1234-5678-9abc-def012345678',
       caseTitle: 'Horvat protiv Zagrebačke banke - Spor ugovora',
       uploadedDate: '2024-12-01',
       size: '2.4 MB',
@@ -81,9 +81,9 @@ Potpis                        Potpis
 Datum: _______________        Datum: _______________`
     },
     {
-      id: 2,
+      id: 'doc-2-uuid-2345-6789-abcd-ef0123456789',
       name: 'Zahtjev za dozvolu za obavljanje djelatnosti.pdf',
-      caseId: 4,
+      caseId: 'case-4-uuid-4567-89ab-cdef-012345678901',
       caseTitle: 'Babić - Osnivanje tvrtke',
       uploadedDate: '2024-11-28',
       size: '1.8 MB',
@@ -121,7 +121,7 @@ Potpis: _________________
 Datum: _________________`
     },
     {
-      id: 3,
+      id: 'doc-3-uuid-3456-789a-bcde-f01234567890',
       name: 'Nacrt radnog ugovora.docx',
       caseId: null,
       caseTitle: null,
@@ -156,9 +156,9 @@ Zaposlenik pristaje ne konkurirati s Tvrtkom u razdoblju od 12 mjeseci nakon ras
 [Dodatni uvjeti za pregovaranje]`
     },
     {
-      id: 4,
+      id: 'doc-4-uuid-4567-89ab-cdef-012345678901',
       name: 'Financijski izvještaj 2024.xlsx',
-      caseId: 2,
+      caseId: 'case-2-uuid-2345-6789-abcd-ef0123456789',
       caseTitle: 'Novak - Trgovina nekretninama',
       uploadedDate: '2024-11-20',
       size: '3.2 MB',

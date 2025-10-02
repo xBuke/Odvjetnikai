@@ -19,9 +19,10 @@ import Modal from '../../components/ui/Modal';
 import { FormField, FormInput, FormTextarea, FormSelect, FormActions } from '../../components/ui/Form';
 import { supabase } from '@/lib/supabaseClient';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/components/ui/Toast';
 
 interface Client {
-  id: number;
+  id: string;
   name: string;
   email: string;
   phone: string;
@@ -32,9 +33,9 @@ interface Client {
 }
 
 interface Case {
-  id: number;
+  id: string;
   title: string;
-  client_id: number;
+  client_id: string;
   status: 'Open' | 'In Progress' | 'Closed';
   notes: string;
   created_at: string;
@@ -51,6 +52,7 @@ interface CaseWithClient extends Case {
 
 export default function CasesPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -202,11 +204,12 @@ export default function CasesPage() {
           throw error;
         }
 
-        // Redirect to the newly created case detail page
-        if (data) {
-          router.push(`/cases/${data.id}`);
-          return; // Exit early to prevent form reset
-        }
+        console.log('Case created successfully:', data);
+        showToast('✔ Predmet uspješno dodan', 'success');
+
+        // Redirect to cases list instead of detail page
+        router.push('/cases');
+        return; // Exit early to prevent form reset
       }
 
       // Reload cases and reset form (only for updates)
@@ -215,8 +218,13 @@ export default function CasesPage() {
       setEditingCase(null);
       setIsModalOpen(false);
     } catch (err) {
-      console.error('Error saving case:', err);
+      console.error('Error saving case:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      });
       setError('Greška pri spremanju predmeta. Molimo pokušajte ponovno.');
+      showToast('✖ Došlo je do greške', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -235,7 +243,7 @@ export default function CasesPage() {
   };
 
   // Handle delete button click
-  const handleDelete = async (caseId: number) => {
+  const handleDelete = async (caseId: string) => {
     if (confirm(t('cases.deleteConfirm'))) {
       try {
         setError(null);
@@ -267,7 +275,7 @@ export default function CasesPage() {
   };
 
   // Handle row click to navigate to case detail
-  const handleRowClick = (caseId: number) => {
+  const handleRowClick = (caseId: string) => {
     router.push(`/cases/${caseId}`);
   };
 

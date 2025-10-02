@@ -18,9 +18,10 @@ import Modal from '../../components/ui/Modal';
 import { FormField, FormInput, FormTextarea, FormActions } from '../../components/ui/Form';
 import { supabase } from '@/lib/supabaseClient';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/components/ui/Toast';
 
 interface Client {
-  id: number;
+  id: string;
   name: string;
   email: string;
   phone: string;
@@ -32,6 +33,7 @@ interface Client {
 
 export default function ClientsPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -72,7 +74,12 @@ export default function ClientsPage() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('Supabase error loading clients:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
 
@@ -136,14 +143,21 @@ export default function ClientsPage() {
             updated_at: new Date().toISOString()
           })
           .eq('id', editingClient.id)
-          .select();
+          .select()
+          .single();
 
         if (error) {
-          console.error('Supabase update error:', error);
+          console.error('Supabase update error:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
           throw error;
         }
 
         console.log('Client updated successfully:', data);
+        showToast('✔ Klijent uspješno ažuriran', 'success');
       } else {
         // Add new client
         const { data, error } = await supabase
@@ -159,17 +173,17 @@ export default function ClientsPage() {
           .single();
 
         if (error) {
-          console.error('Supabase insert error:', error);
+          console.error('Supabase insert error:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
           throw error;
         }
 
         console.log('Client created successfully:', data);
-
-        // Redirect to the newly created client detail page
-        if (data) {
-          router.push(`/clients/${data.id}`);
-          return; // Exit early to prevent form reset
-        }
+        showToast('✔ Klijent uspješno dodan', 'success');
       }
 
       // Reload clients and reset form (only for updates)
@@ -178,9 +192,14 @@ export default function ClientsPage() {
       setEditingClient(null);
       setIsModalOpen(false);
     } catch (err) {
-      console.error('Error saving client:', err);
+      console.error('Error saving client:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      });
       const errorMessage = err instanceof Error ? err.message : 'Greška pri spremanju klijenta. Molimo pokušajte ponovno.';
       setError(errorMessage);
+      showToast('✖ Došlo je do greške', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -200,7 +219,7 @@ export default function ClientsPage() {
   };
 
   // Handle delete button click
-  const handleDelete = async (clientId: number) => {
+  const handleDelete = async (clientId: string) => {
     if (confirm(t('clients.deleteConfirm'))) {
       try {
         setError(null);
@@ -213,17 +232,28 @@ export default function ClientsPage() {
           .select();
 
         if (error) {
-          console.error('Supabase delete error:', error);
+          console.error('Supabase delete error:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
           throw error;
         }
 
         console.log('Client deleted successfully:', data);
+        showToast('✔ Klijent uspješno obrisan', 'success');
         // Reload clients after deletion
         await loadClients();
       } catch (err) {
-        console.error('Error deleting client:', err);
+        console.error('Error deleting client:', {
+          error: err,
+          message: err instanceof Error ? err.message : 'Unknown error',
+          stack: err instanceof Error ? err.stack : undefined
+        });
         const errorMessage = err instanceof Error ? err.message : 'Greška pri brisanju klijenta. Molimo pokušajte ponovno.';
         setError(errorMessage);
+        showToast('✖ Došlo je do greške', 'error');
       }
     }
   };
@@ -236,7 +266,7 @@ export default function ClientsPage() {
   };
 
   // Handle row click to navigate to client detail
-  const handleRowClick = (clientId: number) => {
+  const handleRowClick = (clientId: string) => {
     router.push(`/clients/${clientId}`);
   };
 

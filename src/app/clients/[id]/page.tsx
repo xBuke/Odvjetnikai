@@ -19,7 +19,7 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 
 interface Client {
-  id: number;
+  id: string;
   name: string;
   email: string;
   phone: string;
@@ -28,7 +28,7 @@ interface Client {
 }
 
 interface Case {
-  id: number;
+  id: string;
   title: string;
   status: 'Active' | 'In Review' | 'Pending' | 'Closed';
   statusColor: 'green' | 'yellow' | 'blue' | 'gray';
@@ -38,7 +38,7 @@ interface Case {
 }
 
 interface Document {
-  id: number;
+  id: string;
   title: string;
   type: string;
   uploadDate: string;
@@ -50,7 +50,7 @@ interface Document {
 export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const clientId = parseInt(params.id as string);
+  const clientId = params.id as string;
 
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,7 +59,7 @@ export default function ClientDetailPage() {
   // Mock cases data (for now - in a real app, this would come from an API)
   const mockCases: Case[] = [
     {
-      id: 1,
+      id: 'case-1-uuid-1234-5678-9abc-def012345678',
       title: 'Horvat protiv Zagrebačke banke - Spor ugovora',
       status: 'Active',
       statusColor: 'green',
@@ -68,7 +68,7 @@ export default function ClientDetailPage() {
       description: 'Slučaj kršenja ugovora koji uključuje licencni ugovor za softver.'
     },
     {
-      id: 2,
+      id: 'case-2-uuid-2345-6789-abcd-ef0123456789',
       title: 'Osnivanje tvrtke Horvat d.o.o.',
       status: 'In Review',
       statusColor: 'yellow',
@@ -77,7 +77,7 @@ export default function ClientDetailPage() {
       description: 'Osnivanje nove d.o.o. za tehnološko savjetovanje.'
     },
     {
-      id: 3,
+      id: 'case-3-uuid-3456-789a-bcde-f01234567890',
       title: 'Pregled radnog ugovora - Horvat',
       status: 'Pending',
       statusColor: 'blue',
@@ -90,7 +90,7 @@ export default function ClientDetailPage() {
   // Mock documents data (for now - in a real app, this would come from an API)
   const mockDocuments: Document[] = [
     {
-      id: 1,
+      id: 'doc-1-uuid-1234-5678-9abc-def012345678',
       title: 'Ugovor o suradnji - Zagrebačka banka.pdf',
       type: 'Ugovor',
       uploadDate: '2024-12-01',
@@ -99,7 +99,7 @@ export default function ClientDetailPage() {
       statusColor: 'green'
     },
     {
-      id: 2,
+      id: 'doc-2-uuid-2345-6789-abcd-ef0123456789',
       title: 'Zahtjev za dozvolu za obavljanje djelatnosti.pdf',
       type: 'Pravni dokument',
       uploadDate: '2024-11-28',
@@ -108,7 +108,7 @@ export default function ClientDetailPage() {
       statusColor: 'yellow'
     },
     {
-      id: 3,
+      id: 'doc-3-uuid-3456-789a-bcde-f01234567890',
       title: 'Nacrt radnog ugovora.docx',
       type: 'Nacrt dokumenta',
       uploadDate: '2024-11-25',
@@ -117,7 +117,7 @@ export default function ClientDetailPage() {
       statusColor: 'blue'
     },
     {
-      id: 4,
+      id: 'doc-4-uuid-4567-89ab-cdef-012345678901',
       title: 'Financijski izvještaj 2024.xlsx',
       type: 'Financijski dokument',
       uploadDate: '2024-11-20',
@@ -135,22 +135,26 @@ export default function ClientDetailPage() {
       setError(null);
 
       // Fetch client data from Supabase
-      const { data: clientData, error: clientError } = await supabase
+      const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('id', clientId)
         .single();
 
-      if (clientError) {
-        throw clientError;
+      if (error) {
+        setError('Greška pri učitavanju klijenta');
+        return;
       }
 
-      if (clientData) {
-        setClient(clientData);
+      if (!data) {
+        setError('Klijent nije pronađen');
+        return;
       }
+
+      setClient(data);
     } catch (err) {
       console.error('Error loading client:', err);
-      setError('Greška pri učitavanju detalja klijenta. Molimo pokušajte ponovno.');
+      setError('Greška pri učitavanju klijenta');
     } finally {
       setLoading(false);
     }
@@ -216,42 +220,21 @@ export default function ClientDetailPage() {
           </div>
           <div className="text-center py-12">
             <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Greška pri učitavanju klijenta</h2>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <button
-              onClick={loadClientData}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors duration-200"
-            >
-              Pokušaj ponovno
-            </button>
+            <div>{error}</div>
+            {error === 'Greška pri učitavanju klijenta' && (
+              <button
+                onClick={loadClientData}
+                className="mt-4 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors duration-200"
+              >
+                Pokušaj ponovno
+              </button>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
-  if (!client) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-          <div className="flex items-center space-x-4 mb-4">
-            <button
-              onClick={() => router.push('/clients')}
-              className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Natrag na klijente</span>
-            </button>
-          </div>
-          <div className="text-center py-12">
-            <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Klijent nije pronađen</h2>
-            <p className="text-muted-foreground">Klijent koji tražite ne postoji.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">

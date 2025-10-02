@@ -17,9 +17,9 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 interface BillingEntry {
-  id: number;
-  client_id: number;
-  case_id: number;
+  id: string;
+  client_id: string;
+  case_id: string;
   hours: number;
   rate: number;
   notes?: string;

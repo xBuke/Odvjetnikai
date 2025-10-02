@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { Loader2 } from 'lucide-react';
 
 interface FormFieldProps {
   label: string;
@@ -157,9 +158,10 @@ export function FormActions({
         type="submit"
         onClick={onSubmit}
         disabled={isLoading}
-        className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+        className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center space-x-2"
       >
-        {isLoading ? 'Saving...' : submitText}
+        {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+        <span>{isLoading ? 'Spremi...' : submitText}</span>
       </button>
     </div>
   );

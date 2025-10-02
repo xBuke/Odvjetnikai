@@ -20,7 +20,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabaseClient';
 
 interface Client {
-  id: number;
+  id: string;
   name: string;
   email: string;
   phone: string;
@@ -29,9 +29,9 @@ interface Client {
 }
 
 interface Case {
-  id: number;
+  id: string;
   title: string;
-  client_id: number;
+  client_id: string;
   status: 'Open' | 'In Progress' | 'Closed';
   notes: string;
   created_at: string;
@@ -42,9 +42,9 @@ interface Case {
 }
 
 interface BillingEntry {
-  id: number;
-  client_id: number;
-  case_id: number;
+  id: string;
+  client_id: string;
+  case_id: string;
   hours: number;
   rate: number;
   notes?: string;
@@ -323,7 +323,7 @@ export default function BillingPage() {
     setIsModalOpen(true);
   };
 
-  const handleSelectEntry = (id: number) => {
+  const handleSelectEntry = (id: string) => {
     setSelectedEntries(prev => 
       prev.includes(id) 
         ? prev.filter(entryId => entryId !== id)

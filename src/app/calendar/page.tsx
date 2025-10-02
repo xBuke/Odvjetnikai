@@ -8,14 +8,15 @@ import Modal from '../../components/ui/Modal';
 import { FormField, FormInput, FormSelect, FormActions } from '../../components/ui/Form';
 import { supabase } from '@/lib/supabaseClient';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/components/ui/Toast';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const localizer = momentLocalizer(moment);
 
 interface Case {
-  id: number;
+  id: string;
   title: string;
-  client_id: number;
+  client_id: string;
   status: string;
   notes: string;
   created_at: string;
@@ -23,9 +24,9 @@ interface Case {
 }
 
 interface Deadline {
-  id: number;
+  id: string;
   title: string;
-  case_id: number;
+  case_id: string;
   due_date: string;
   created_at: string;
   updated_at?: string;
@@ -35,12 +36,12 @@ interface Deadline {
 }
 
 interface Event {
-  id: number;
+  id: string;
   title: string;
   case: string;
   start: Date;
   end: Date;
-  deadlineId: number;
+  deadlineId: string;
 }
 
 interface NewEvent {
@@ -51,6 +52,8 @@ interface NewEvent {
 }
 
 export default function CalendarPage() {
+  const { showToast } = useToast();
+  
   // Safe access to language context
   let t: (key: string) => string;
   try {
@@ -169,6 +172,9 @@ export default function CalendarPage() {
       const [hours, minutes] = newEvent.time.split(':').map(Number);
       const dueDate = new Date(newEvent.due_date);
       dueDate.setHours(hours, minutes);
+      
+      // Convert to ISO string for consistent storage
+      const isoDate = dueDate.toISOString();
 
       if (editingDeadline) {
         // Update existing deadline
@@ -177,7 +183,7 @@ export default function CalendarPage() {
           .update({
             title: newEvent.title,
             case_id: parseInt(newEvent.case_id),
-            due_date: dueDate.toISOString(),
+            due_date: isoDate,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingDeadline.id);
@@ -192,7 +198,7 @@ export default function CalendarPage() {
           .insert([{
             title: newEvent.title,
             case_id: parseInt(newEvent.case_id),
-            due_date: dueDate.toISOString()
+            due_date: isoDate
           }]);
 
         if (error) {
@@ -205,22 +211,35 @@ export default function CalendarPage() {
       setNewEvent({ title: '', case_id: '', due_date: '', time: '' });
       setEditingDeadline(null);
       setShowModal(false);
+      showToast('✔ Rok uspješno spremljen', 'success');
     } catch (err) {
-      console.error('Error saving deadline:', err);
+      console.error('Error saving deadline:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      });
       setError('Failed to save deadline. Please try again.');
+      showToast('✖ Došlo je do greške', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleSelectEvent = (event: Event) => {
-    alert(`Event: ${event.title}\nCase: ${event.case}\nDate: ${event.start.toLocaleDateString()}`);
+    alert(`Event: ${event.title}\nCase: ${event.case}\nDate: ${event.start.toLocaleDateString("hr-HR")}`);
   };
 
   const handleEditDeadline = (deadline: Deadline) => {
     const dueDate = new Date(deadline.due_date);
-    const dateStr = dueDate.toISOString().split('T')[0];
-    const timeStr = dueDate.toTimeString().slice(0, 5);
+    // Use local date to avoid timezone issues
+    const year = dueDate.getFullYear();
+    const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+    const day = String(dueDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
+    const hours = String(dueDate.getHours()).padStart(2, '0');
+    const minutes = String(dueDate.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
 
     setEditingDeadline(deadline);
     setNewEvent({
@@ -247,9 +266,15 @@ export default function CalendarPage() {
 
         // Reload deadlines after deletion
         await loadDeadlines();
+        showToast('✔ Rok uspješno obrisan', 'success');
       } catch (err) {
-        console.error('Error deleting deadline:', err);
+        console.error('Error deleting deadline:', {
+          error: err,
+          message: err instanceof Error ? err.message : 'Unknown error',
+          stack: err instanceof Error ? err.stack : undefined
+        });
         setError('Failed to delete deadline. Please try again.');
+        showToast('✖ Došlo je do greške', 'error');
       }
     }
   };
@@ -386,7 +411,7 @@ export default function CalendarPage() {
                     <h4 className="font-medium text-foreground">{deadline.title}</h4>
                     <p className="text-sm text-muted-foreground">{deadline.cases?.title || 'Unknown Case'}</p>
                     <p className="text-xs text-muted-foreground">
-                      {t('dashboard.due')}: {new Date(deadline.due_date).toLocaleDateString()} {t('calendar.at')} {new Date(deadline.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {t('dashboard.due')}: {new Date(deadline.due_date).toLocaleDateString("hr-HR")} {t('calendar.at')} {new Date(deadline.due_date).toLocaleTimeString("hr-HR", { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">

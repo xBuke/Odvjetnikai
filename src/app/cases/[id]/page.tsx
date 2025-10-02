@@ -23,7 +23,7 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 
 interface Client {
-  id: number;
+  id: string;
   name: string;
   email: string;
   phone: string;
@@ -32,9 +32,9 @@ interface Client {
 }
 
 interface Case {
-  id: number;
+  id: string;
   title: string;
-  client_id: number;
+  client_id: string;
   status: 'Open' | 'In Progress' | 'Closed';
   notes: string;
   created_at: string;
@@ -45,7 +45,7 @@ interface Case {
 }
 
 interface TimelineEvent {
-  id: number;
+  id: string;
   type: 'hearing' | 'document' | 'meeting' | 'note' | 'status_change';
   title: string;
   description: string;
@@ -58,7 +58,7 @@ interface TimelineEvent {
 export default function CaseDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const caseId = parseInt(params.id as string);
+  const caseId = params.id as string;
 
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +74,7 @@ export default function CaseDetailPage() {
   // Mock timeline events
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([
     {
-      id: 1,
+      id: 'event-1-uuid-1234-5678-9abc-def012345678',
       type: 'hearing',
       title: 'Hearing scheduled',
       description: 'Preliminary hearing scheduled for December 20, 2024 at 10:00 AM',
@@ -84,7 +84,7 @@ export default function CaseDetailPage() {
       iconColor: 'text-blue-600'
     },
     {
-      id: 2,
+      id: 'event-2-uuid-2345-6789-abcd-ef0123456789',
       type: 'document',
       title: 'Document uploaded',
       description: 'Contract agreement and supporting documents uploaded to case file',
@@ -94,7 +94,7 @@ export default function CaseDetailPage() {
       iconColor: 'text-green-600'
     },
     {
-      id: 3,
+      id: 'event-3-uuid-3456-789a-bcde-f01234567890',
       type: 'meeting',
       title: 'Client meeting',
       description: 'Initial consultation with client to discuss case strategy',
@@ -104,7 +104,7 @@ export default function CaseDetailPage() {
       iconColor: 'text-purple-600'
     },
     {
-      id: 4,
+      id: 'event-4-uuid-4567-89ab-cdef-012345678901',
       type: 'status_change',
       title: 'Status changed',
       description: 'Case status updated from Open to In Progress',
@@ -114,7 +114,7 @@ export default function CaseDetailPage() {
       iconColor: 'text-yellow-600'
     },
     {
-      id: 5,
+      id: 'event-5-uuid-5678-9abc-def0-123456789012',
       type: 'note',
       title: 'Case created',
       description: 'New case file created and initial documentation prepared',

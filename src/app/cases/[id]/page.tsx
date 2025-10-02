@@ -17,8 +17,10 @@ import {
   MessageSquare,
   ExternalLink,
   FolderOpen,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 interface Client {
   id: number;
@@ -32,12 +34,14 @@ interface Client {
 interface Case {
   id: number;
   title: string;
-  clientId: number;
-  clientName: string;
+  client_id: number;
   status: 'Open' | 'In Progress' | 'Closed';
-  statusColor: 'blue' | 'yellow' | 'green';
-  createdDate: string;
   notes: string;
+  created_at: string;
+  updated_at?: string;
+  clients?: {
+    name: string;
+  };
 }
 
 interface TimelineEvent {
@@ -59,6 +63,7 @@ export default function CaseDetailPage() {
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [newEvent, setNewEvent] = useState({
     type: 'note' as TimelineEvent['type'],
@@ -66,102 +71,6 @@ export default function CaseDetailPage() {
     description: ''
   });
 
-  // Mock data - in a real app, this would come from an API
-  const mockClients: Client[] = [
-    {
-      id: 1,
-      name: 'Marko Horvat',
-      email: 'marko.horvat@zagreb.hr',
-      phone: '+385 91 123 4567',
-      oib: '12345678901',
-      notes: 'Korporativni klijent, preferira email komunikaciju'
-    },
-    {
-      id: 2,
-      name: 'Ana Novak',
-      email: 'ana.novak@nekretnine.hr',
-      phone: '+385 92 234 5678',
-      oib: '23456789012',
-      notes: 'Specijalist za nekretnine i trgovinu'
-    },
-    {
-      id: 3,
-      name: 'Petar Kovačević',
-      email: 'petar.kovacevic@obitelj.hr',
-      phone: '+385 95 345 6789',
-      oib: '34567890123',
-      notes: 'Dugogodišnji klijent, obiteljsko pravo'
-    },
-    {
-      id: 4,
-      name: 'Ivana Babić',
-      email: 'ivana.babic@poduzetnik.hr',
-      phone: '+385 98 456 7890',
-      oib: '45678901234',
-      notes: 'Osnivanje tvrtki i ugovori'
-    },
-    {
-      id: 5,
-      name: 'Tomislav Jurić',
-      email: 'tomislav.juric@tehnologija.hr',
-      phone: '+385 99 567 8901',
-      oib: '56789012345',
-      notes: 'Specijalist za intelektualno vlasništvo i patente'
-    }
-  ];
-
-  const mockCases: Case[] = [
-    {
-      id: 1,
-      title: 'Horvat protiv Zagrebačke banke - Spor ugovora',
-      clientId: 1,
-      clientName: 'Marko Horvat',
-      status: 'In Progress',
-      statusColor: 'yellow',
-      createdDate: '2024-11-15',
-      notes: 'Slučaj kršenja ugovora koji uključuje licencni ugovor za softver. Faza otkrivanja u tijeku.'
-    },
-    {
-      id: 2,
-      title: 'Novak - Trgovina nekretninama',
-      clientId: 2,
-      clientName: 'Ana Novak',
-      status: 'Open',
-      statusColor: 'blue',
-      createdDate: '2024-11-20',
-      notes: 'Pregled i pregovaranje ugovora o kupnji komercijalne nekretnine.'
-    },
-    {
-      id: 3,
-      title: 'Kovačević - Obiteljsko pravo',
-      clientId: 3,
-      clientName: 'Petar Kovačević',
-      status: 'Closed',
-      statusColor: 'green',
-      createdDate: '2024-10-10',
-      notes: 'Razvodni sporazum finaliziran. Svi dokumenti potpisani i podneseni.'
-    },
-    {
-      id: 4,
-      title: 'Babić - Osnivanje tvrtke',
-      clientId: 4,
-      clientName: 'Ivana Babić',
-      status: 'In Progress',
-      statusColor: 'yellow',
-      createdDate: '2024-11-25',
-      notes: 'Osnivanje nove d.o.o. za tehnološko savjetovanje. Statut podnesen.'
-    },
-    {
-      id: 5,
-      title: 'Jurić - Zahtjev za patent',
-      clientId: 5,
-      clientName: 'Tomislav Jurić',
-      status: 'Open',
-      statusColor: 'blue',
-      createdDate: '2024-12-01',
-      notes: 'Zahtjev za patent za inovativni softverski algoritam. Početna prijava završena.'
-    }
-  ];
 
   // Mock timeline events
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([
@@ -217,17 +126,48 @@ export default function CaseDetailPage() {
     }
   ]);
 
-  useEffect(() => {
-    // Simulate API call
-    const foundCase = mockCases.find(c => c.id === caseId);
-    if (foundCase) {
-      setCaseData(foundCase);
-      const foundClient = mockClients.find(c => c.id === foundCase.clientId);
-      if (foundClient) {
-        setClient(foundClient);
+
+  // Load case data from Supabase
+  const loadCaseData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch case with client information from Supabase
+      const { data: caseData, error: caseError } = await supabase
+        .from('cases')
+        .select('*, clients(name, email, phone, oib, notes)')
+        .eq('id', caseId)
+        .single();
+
+      if (caseError) {
+        throw caseError;
       }
+
+      if (caseData) {
+        setCaseData(caseData);
+        // Set client data from the joined query
+        if (caseData.clients) {
+          setClient({
+            id: caseData.client_id,
+            name: caseData.clients.name,
+            email: caseData.clients.email,
+            phone: caseData.clients.phone,
+            oib: caseData.clients.oib,
+            notes: caseData.clients.notes
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error loading case:', err);
+      setError('Greška pri učitavanju detalja predmeta. Molimo pokušajte ponovno.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadCaseData();
   }, [caseId]);
 
   const getStatusIcon = (status: string) => {
@@ -295,8 +235,37 @@ export default function CaseDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading case details...</p>
+          <Loader2 className="w-8 h-8 text-muted-foreground mx-auto mb-4 animate-spin" />
+          <p className="text-muted-foreground">Učitavanje detalja predmeta...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <div className="flex items-center space-x-4 mb-4">
+            <button
+              onClick={() => router.push('/cases')}
+              className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Natrag na predmete</span>
+            </button>
+          </div>
+          <div className="text-center py-12">
+            <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">Greška pri učitavanju predmeta</h2>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <button
+              onClick={loadCaseData}
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors duration-200"
+            >
+              Pokušaj ponovno
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -312,13 +281,13 @@ export default function CaseDetailPage() {
               className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span>Back to Cases</span>
+              <span>Natrag na predmete</span>
             </button>
           </div>
           <div className="text-center py-12">
             <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Case Not Found</h2>
-            <p className="text-muted-foreground">The case you&apos;re looking for doesn&apos;t exist.</p>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Predmet nije pronađen</h2>
+            <p className="text-muted-foreground">Predmet koji tražite ne postoji.</p>
           </div>
         </div>
       </div>
@@ -335,7 +304,7 @@ export default function CaseDetailPage() {
             className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>Back to Cases</span>
+            <span>Natrag na predmete</span>
           </button>
         </div>
         <div className="flex items-center space-x-4">
@@ -344,7 +313,7 @@ export default function CaseDetailPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{caseData.title}</h1>
-            <p className="text-muted-foreground">Case Details</p>
+            <p className="text-muted-foreground">Detalji predmeta</p>
           </div>
         </div>
       </div>
@@ -352,7 +321,7 @@ export default function CaseDetailPage() {
       {/* Case Information */}
       <div className="bg-card rounded-lg shadow-sm border border-border">
         <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Case Information</h2>
+          <h2 className="text-lg font-semibold text-foreground">Informacije o predmetu</h2>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -360,18 +329,18 @@ export default function CaseDetailPage() {
               <div className="flex items-center space-x-3">
                 <FileText className="w-5 h-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Title</p>
+                  <p className="text-sm font-medium text-muted-foreground">Naziv</p>
                   <p className="text-foreground">{caseData.title}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <User className="w-5 h-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Client</p>
+                  <p className="text-sm font-medium text-muted-foreground">Klijent</p>
                   <div className="flex items-center space-x-2">
-                    <p className="text-foreground">{caseData.clientName}</p>
+                    <p className="text-foreground">{caseData.clients?.name || 'Nepoznati klijent'}</p>
                     <button
-                      onClick={() => router.push(`/clients/${caseData.clientId}`)}
+                      onClick={() => router.push(`/clients/${caseData.client_id}`)}
                       className="text-primary hover:text-primary/80 transition-colors duration-200"
                       title="View client details"
                     >
@@ -389,9 +358,9 @@ export default function CaseDetailPage() {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    caseData.statusColor === 'blue' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
-                    caseData.statusColor === 'yellow' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                    caseData.statusColor === 'green' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                    caseData.status === 'Open' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                    caseData.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                    caseData.status === 'Closed' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
                     'bg-muted text-muted-foreground'
                   }`}>
                     {caseData.status}
@@ -401,8 +370,8 @@ export default function CaseDetailPage() {
               <div className="flex items-center space-x-3">
                 <Calendar className="w-5 h-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Created Date</p>
-                  <p className="text-foreground">{formatDate(caseData.createdDate)}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Datum kreiranja</p>
+                  <p className="text-foreground">{formatDate(caseData.created_at)}</p>
                 </div>
               </div>
             </div>
@@ -412,7 +381,7 @@ export default function CaseDetailPage() {
               <div className="flex items-start space-x-3">
                 <MessageSquare className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-2">Notes</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Bilješke</p>
                   <p className="text-foreground">{caseData.notes}</p>
                 </div>
               </div>
@@ -426,20 +395,20 @@ export default function CaseDetailPage() {
         <h3 className="text-lg font-semibold text-foreground mb-4">Related</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
-            onClick={() => router.push(`/clients/${caseData.clientId}`)}
+            onClick={() => router.push(`/clients/${caseData.client_id}`)}
             className="flex items-center space-x-3 p-4 border border-border rounded-lg hover:bg-accent transition-colors duration-200 text-left"
           >
             <User className="w-8 h-8 text-primary" />
             <div>
-              <h4 className="font-medium text-foreground">View Client</h4>
-              <p className="text-sm text-muted-foreground">See client details and information</p>
+            <h4 className="font-medium text-foreground">Prikaži klijenta</h4>
+            <p className="text-sm text-muted-foreground">Pogledaj detalje i informacije o klijentu</p>
             </div>
           </button>
           <button className="flex items-center space-x-3 p-4 border border-border rounded-lg hover:bg-accent transition-colors duration-200 text-left">
             <FolderOpen className="w-8 h-8 text-green-600" />
             <div>
-              <h4 className="font-medium text-foreground">Case Documents</h4>
-              <p className="text-sm text-muted-foreground">View and manage case documents</p>
+            <h4 className="font-medium text-foreground">Dokumenti predmeta</h4>
+            <p className="text-sm text-muted-foreground">Pogledaj i upravljaj dokumentima predmeta</p>
             </div>
           </button>
         </div>
@@ -449,13 +418,13 @@ export default function CaseDetailPage() {
       <div className="bg-card rounded-lg shadow-sm border border-border">
         <div className="p-6 border-b border-border">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Case Timeline</h2>
+            <h2 className="text-lg font-semibold text-foreground">Vremenska linija predmeta</h2>
             <button
               onClick={() => setIsAddEventModalOpen(true)}
               className="flex items-center space-x-2 bg-primary text-primary-foreground px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors duration-200"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Event</span>
+              <span>Dodaj događaj</span>
             </button>
           </div>
         </div>
@@ -494,7 +463,7 @@ export default function CaseDetailPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-lg shadow-xl max-w-md w-full">
             <div className="flex items-center justify-between p-6 border-b border-border">
-              <h3 className="text-lg font-semibold text-foreground">Add Timeline Event</h3>
+              <h3 className="text-lg font-semibold text-foreground">Dodaj događaj u vremensku liniju</h3>
               <button
                 onClick={() => setIsAddEventModalOpen(false)}
                 className="text-muted-foreground hover:text-foreground transition-colors duration-200"
@@ -506,7 +475,7 @@ export default function CaseDetailPage() {
             <form onSubmit={handleAddEvent} className="p-6 space-y-4">
               <div>
                 <label htmlFor="eventType" className="block text-sm font-medium text-foreground mb-1">
-                  Event Type
+                  Vrsta događaja
                 </label>
                 <select
                   id="eventType"
@@ -514,17 +483,17 @@ export default function CaseDetailPage() {
                   onChange={(e) => setNewEvent(prev => ({ ...prev, type: e.target.value as TimelineEvent['type'] }))}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-input text-foreground"
                 >
-                  <option value="note">Note</option>
-                  <option value="hearing">Hearing</option>
-                  <option value="document">Document</option>
-                  <option value="meeting">Meeting</option>
-                  <option value="status_change">Status Change</option>
+                  <option value="note">Bilješka</option>
+                  <option value="hearing">Rasprava</option>
+                  <option value="document">Dokument</option>
+                  <option value="meeting">Sastanak</option>
+                  <option value="status_change">Promjena statusa</option>
                 </select>
               </div>
 
               <div>
                 <label htmlFor="eventTitle" className="block text-sm font-medium text-foreground mb-1">
-                  Title *
+                  Naziv *
                 </label>
                 <input
                   type="text"
@@ -533,13 +502,13 @@ export default function CaseDetailPage() {
                   onChange={(e) => setNewEvent(prev => ({ ...prev, title: e.target.value }))}
                   required
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-input text-foreground"
-                  placeholder="Enter event title"
+                  placeholder="Unesite naziv događaja"
                 />
               </div>
 
               <div>
                 <label htmlFor="eventDescription" className="block text-sm font-medium text-foreground mb-1">
-                  Description *
+                  Opis *
                 </label>
                 <textarea
                   id="eventDescription"
@@ -548,7 +517,7 @@ export default function CaseDetailPage() {
                   required
                   rows={3}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-input text-foreground"
-                  placeholder="Enter event description"
+                  placeholder="Unesite opis događaja"
                 />
               </div>
 
@@ -558,13 +527,13 @@ export default function CaseDetailPage() {
                   onClick={() => setIsAddEventModalOpen(false)}
                   className="px-4 py-2 text-muted-foreground bg-muted rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors duration-200"
                 >
-                  Cancel
+                  Odustani
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors duration-200"
                 >
-                  Add Event
+                  Dodaj događaj
                 </button>
               </div>
             </form>

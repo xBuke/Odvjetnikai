@@ -14,8 +14,10 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  XCircle
+  XCircle,
+  Loader2
 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 interface Client {
   id: number;
@@ -53,52 +55,9 @@ export default function ClientDetailPage() {
 
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - in a real app, this would come from an API
-  const mockClients: Client[] = [
-    {
-      id: 1,
-      name: 'Marko Horvat',
-      email: 'marko.horvat@zagreb.hr',
-      phone: '+385 91 123 4567',
-      oib: '12345678901',
-      notes: 'Korporativni klijent, preferira email komunikaciju. Specijalizira se za poslovno pravo i pregovore ugovora.'
-    },
-    {
-      id: 2,
-      name: 'Ana Novak',
-      email: 'ana.novak@nekretnine.hr',
-      phone: '+385 92 234 5678',
-      oib: '23456789012',
-      notes: 'Specijalist za nekretnine i trgovinu. Klijent je već preko 5 godina.'
-    },
-    {
-      id: 3,
-      name: 'Petar Kovačević',
-      email: 'petar.kovacevic@obitelj.hr',
-      phone: '+385 95 345 6789',
-      oib: '34567890123',
-      notes: 'Dugogodišnji klijent, obiteljsko pravo. Preferira telefonsku komunikaciju za hitne slučajeve.'
-    },
-    {
-      id: 4,
-      name: 'Ivana Babić',
-      email: 'ivana.babic@poduzetnik.hr',
-      phone: '+385 98 456 7890',
-      oib: '45678901234',
-      notes: 'Osnivanje tvrtki i ugovori. Novi klijent od ove godine.'
-    },
-    {
-      id: 5,
-      name: 'Tomislav Jurić',
-      email: 'tomislav.juric@tehnologija.hr',
-      phone: '+385 99 567 8901',
-      oib: '56789012345',
-      notes: 'Specijalist za intelektualno vlasništvo i patente. Visokovrijedni klijent s više tekućih slučajeva.'
-    }
-  ];
-
-  // Mock cases data
+  // Mock cases data (for now - in a real app, this would come from an API)
   const mockCases: Case[] = [
     {
       id: 1,
@@ -129,7 +88,7 @@ export default function ClientDetailPage() {
     }
   ];
 
-  // Mock documents data
+  // Mock documents data (for now - in a real app, this would come from an API)
   const mockDocuments: Document[] = [
     {
       id: 1,
@@ -169,13 +128,37 @@ export default function ClientDetailPage() {
     }
   ];
 
-  useEffect(() => {
-    // Simulate API call
-    const foundClient = mockClients.find(c => c.id === clientId);
-    if (foundClient) {
-      setClient(foundClient);
+
+  // Load client data from Supabase
+  const loadClientData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch client data from Supabase
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', clientId)
+        .single();
+
+      if (clientError) {
+        throw clientError;
+      }
+
+      if (clientData) {
+        setClient(clientData);
+      }
+    } catch (err) {
+      console.error('Error loading client:', err);
+      setError('Greška pri učitavanju detalja klijenta. Molimo pokušajte ponovno.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadClientData();
   }, [clientId]);
 
   const getStatusIcon = (status: string) => {
@@ -212,8 +195,37 @@ export default function ClientDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading client details...</p>
+          <Loader2 className="w-8 h-8 text-muted-foreground mx-auto mb-4 animate-spin" />
+          <p className="text-muted-foreground">Učitavanje detalja klijenta...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <div className="flex items-center space-x-4 mb-4">
+            <button
+              onClick={() => router.push('/clients')}
+              className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Natrag na klijente</span>
+            </button>
+          </div>
+          <div className="text-center py-12">
+            <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">Greška pri učitavanju klijenta</h2>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <button
+              onClick={loadClientData}
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors duration-200"
+            >
+              Pokušaj ponovno
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -229,13 +241,13 @@ export default function ClientDetailPage() {
               className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span>Back to Clients</span>
+              <span>Natrag na klijente</span>
             </button>
           </div>
           <div className="text-center py-12">
             <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Client Not Found</h2>
-            <p className="text-muted-foreground">The client you&apos;re looking for doesn&apos;t exist.</p>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Klijent nije pronađen</h2>
+            <p className="text-muted-foreground">Klijent koji tražite ne postoji.</p>
           </div>
         </div>
       </div>
@@ -252,7 +264,7 @@ export default function ClientDetailPage() {
             className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>Back to Clients</span>
+            <span>Natrag na klijente</span>
           </button>
         </div>
         <div className="flex items-center space-x-4">
@@ -261,7 +273,7 @@ export default function ClientDetailPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{client.name}</h1>
-            <p className="text-muted-foreground">Client Details</p>
+            <p className="text-muted-foreground">Detalji klijenta</p>
           </div>
         </div>
       </div>
@@ -269,7 +281,7 @@ export default function ClientDetailPage() {
       {/* Client Information */}
       <div className="bg-card rounded-lg shadow-sm border border-border">
         <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Client Information</h2>
+          <h2 className="text-lg font-semibold text-foreground">Informacije o klijentu</h2>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -277,14 +289,14 @@ export default function ClientDetailPage() {
               <div className="flex items-center space-x-3">
                 <User className="w-5 h-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Name</p>
+                  <p className="text-sm font-medium text-muted-foreground">Ime</p>
                   <p className="text-foreground">{client.name}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Email</p>
+                  <p className="text-sm font-medium text-muted-foreground">E-pošta</p>
                   <p className="text-foreground">{client.email}</p>
                 </div>
               </div>
@@ -293,7 +305,7 @@ export default function ClientDetailPage() {
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Phone</p>
+                  <p className="text-sm font-medium text-muted-foreground">Telefon</p>
                   <p className="text-foreground">{client.phone}</p>
                 </div>
               </div>
@@ -311,7 +323,7 @@ export default function ClientDetailPage() {
               <div className="flex items-start space-x-3">
                 <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-2">Notes</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Bilješke</p>
                   <p className="text-foreground">{client.notes}</p>
                 </div>
               </div>
@@ -323,7 +335,7 @@ export default function ClientDetailPage() {
       {/* Linked Cases */}
       <div className="bg-card rounded-lg shadow-sm border border-border">
         <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Linked Cases</h2>
+          <h2 className="text-lg font-semibold text-foreground">Povezani predmeti</h2>
         </div>
         <div className="p-6">
           {mockCases.length > 0 ? (
@@ -358,7 +370,7 @@ export default function ClientDetailPage() {
           ) : (
             <div className="text-center py-8">
               <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No cases linked to this client.</p>
+              <p className="text-muted-foreground">Nema predmeta povezanih s ovim klijentom.</p>
             </div>
           )}
         </div>
@@ -367,7 +379,7 @@ export default function ClientDetailPage() {
       {/* Linked Documents */}
       <div className="bg-card rounded-lg shadow-sm border border-border">
         <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Linked Documents</h2>
+          <h2 className="text-lg font-semibold text-foreground">Povezani dokumenti</h2>
         </div>
         <div className="p-6">
           {mockDocuments.length > 0 ? (
@@ -411,7 +423,7 @@ export default function ClientDetailPage() {
           ) : (
             <div className="text-center py-8">
               <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No documents linked to this client.</p>
+              <p className="text-muted-foreground">Nema dokumenata povezanih s ovim klijentom.</p>
             </div>
           )}
         </div>

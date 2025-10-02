@@ -40,12 +40,12 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
   } catch (error) {
     // Fallback function if context is not available
     const fallbackTranslations: Record<string, string> = {
-      'nav.dashboard': 'Dashboard',
-      'nav.clients': 'Clients',
-      'nav.cases': 'Cases',
-      'nav.calendar': 'Calendar',
-      'nav.documents': 'Documents',
-      'nav.billing': 'Billing',
+      'nav.dashboard': 'Nadzorna ploča',
+      'nav.clients': 'Klijenti',
+      'nav.cases': 'Predmeti',
+      'nav.calendar': 'Kalendar',
+      'nav.documents': 'Dokumenti',
+      'nav.billing': 'Naplata',
     };
     t = (key: string) => fallbackTranslations[key] || key;
   }

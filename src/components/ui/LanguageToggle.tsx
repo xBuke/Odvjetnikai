@@ -5,7 +5,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function LanguageToggle() {
   // Safe access to language context
-  let language: 'en' | 'hr' = 'en';
+  let language: 'en' | 'hr' = 'hr';
   let toggleLanguage: () => void = () => {};
   let t: (key: string) => string = (key: string) => key;
   

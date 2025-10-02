@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Plus, 
   FileText, 
@@ -8,27 +8,68 @@ import {
   DollarSign,
   Calendar,
   User,
-  Briefcase
+  Briefcase,
+  Edit,
+  Trash2,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
-import { FormField, FormInput, FormActions } from '../../components/ui/Form';
+import { FormField, FormInput, FormSelect, FormTextarea, FormActions } from '../../components/ui/Form';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/lib/supabaseClient';
+
+interface Client {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  oib: string;
+  notes: string;
+}
+
+interface Case {
+  id: number;
+  title: string;
+  client_id: number;
+  status: 'Open' | 'In Progress' | 'Closed';
+  notes: string;
+  created_at: string;
+  updated_at?: string;
+  clients?: {
+    name: string;
+  };
+}
 
 interface BillingEntry {
-  id: string;
-  client: string;
-  case: string;
+  id: number;
+  client_id: number;
+  case_id: number;
   hours: number;
   rate: number;
+  notes?: string;
+  created_at: string;
+  updated_at?: string;
+  clients?: {
+    name: string;
+  };
+  cases?: {
+    title: string;
+  };
+}
+
+interface BillingEntryWithDetails extends BillingEntry {
+  clientName: string;
+  caseName: string;
   total: number;
-  date: string;
 }
 
 interface TimeEntryForm {
-  client: string;
-  case: string;
+  client_id: string;
+  case_id: string;
   hours: number;
   rate: number;
+  notes: string;
 }
 
 export default function BillingPage() {
@@ -41,63 +82,24 @@ export default function BillingPage() {
     // Fallback function if context is not available
     t = (key: string) => key;
   }
-  const [billingEntries, setBillingEntries] = useState<BillingEntry[]>([
-    {
-      id: '1',
-      client: 'Horvat & Partneri',
-      case: 'Horvat protiv Zagrebačke banke',
-      hours: 8.5,
-      rate: 250,
-      total: 2125,
-      date: '2024-12-10'
-    },
-    {
-      id: '2',
-      client: 'Obiteljski fond Novak',
-      case: 'Novak - Planiranje nasljedstva',
-      hours: 12.0,
-      rate: 200,
-      total: 2400,
-      date: '2024-12-09'
-    },
-    {
-      id: '3',
-      client: 'Kovačević & Suradnici',
-      case: 'Kovačević - Radni spor',
-      hours: 6.0,
-      rate: 275,
-      total: 1650,
-      date: '2024-12-08'
-    },
-    {
-      id: '4',
-      client: 'Babić Nekretnine',
-      case: 'Babić - Nekretnine',
-      hours: 4.5,
-      rate: 225,
-      total: 1012.5,
-      date: '2024-12-07'
-    },
-    {
-      id: '5',
-      client: 'Jurić Tehnologija d.o.o.',
-      case: 'Jurić - Zahtjev za patent',
-      hours: 15.0,
-      rate: 300,
-      total: 4500,
-      date: '2024-12-06'
-    }
-  ]);
 
+  // State management
+  const [billingEntries, setBillingEntries] = useState<BillingEntryWithDetails[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [cases, setCases] = useState<Case[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<BillingEntryWithDetails | null>(null);
   const [formData, setFormData] = useState<TimeEntryForm>({
-    client: '',
-    case: '',
+    client_id: '',
+    case_id: '',
     hours: 0,
-    rate: 0
+    rate: 0,
+    notes: ''
   });
-
-  const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
+  const [selectedEntries, setSelectedEntries] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [existingInvoices] = useState([
     { id: '1', invoiceNumber: 'INV-000001', client: 'Horvat & Partneri', date: '2024-12-01', total: 2125, status: 'paid' },
     { id: '2', invoiceNumber: 'INV-000002', client: 'Obiteljski fond Novak', date: '2024-11-28', total: 2400, status: 'sent' },
@@ -106,7 +108,83 @@ export default function BillingPage() {
     { id: '5', invoiceNumber: 'INV-000005', client: 'Jurić Tehnologija d.o.o.', date: '2024-11-15', total: 4500, status: 'sent' }
   ]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  // Load clients from Supabase
+  const loadClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      setClients(data || []);
+    } catch (err) {
+      console.error('Error loading clients:', err);
+      setError(t('billing.failedToLoadClients'));
+    }
+  };
+
+  // Load cases from Supabase
+  const loadCases = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cases')
+        .select('*')
+        .order('title', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      setCases(data || []);
+    } catch (err) {
+      console.error('Error loading cases:', err);
+      setError(t('billing.failedToLoadCases'));
+    }
+  };
+
+  // Load billing entries from Supabase with client and case joins
+  const loadBillingEntries = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { data, error } = await supabase
+        .from('billing_entries')
+        .select('*, clients(name), cases(title)')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      // Transform data to include clientName, caseName, and total
+      const entriesWithDetails: BillingEntryWithDetails[] = (data || []).map(entry => ({
+        ...entry,
+        clientName: entry.clients?.name || t('billing.unknownClient'),
+        caseName: entry.cases?.title || t('billing.unknownCase'),
+        total: entry.hours * entry.rate
+      }));
+
+      setBillingEntries(entriesWithDetails);
+    } catch (err) {
+      console.error('Error loading billing entries:', err);
+      setError(t('billing.failedToLoadBillingEntries'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load all data on component mount
+  useEffect(() => {
+    loadClients();
+    loadCases();
+    loadBillingEntries();
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -114,30 +192,138 @@ export default function BillingPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Create new billing entry
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.client || !formData.case || formData.hours <= 0 || formData.rate <= 0) {
-      alert('Please fill in all fields with valid values');
+    if (!formData.client_id || !formData.case_id || formData.hours <= 0 || formData.rate <= 0) {
+      setError(t('billing.fillAllFields'));
       return;
     }
 
-    const newEntry: BillingEntry = {
-      id: Date.now().toString(),
-      client: formData.client,
-      case: formData.case,
-      hours: formData.hours,
-      rate: formData.rate,
-      total: formData.hours * formData.rate,
-      date: new Date().toISOString().split('T')[0]
-    };
+    try {
+      setSubmitting(true);
+      setError(null);
 
-    setBillingEntries(prev => [newEntry, ...prev]);
-    setFormData({ client: '', case: '', hours: 0, rate: 0 });
-    setIsModalOpen(false);
+      const { error } = await supabase.from('billing_entries').insert([
+        {
+          client_id: parseInt(formData.client_id),
+          case_id: parseInt(formData.case_id),
+          hours: formData.hours,
+          rate: formData.rate,
+          notes: formData.notes
+        }
+      ]);
+
+      if (error) {
+        throw error;
+      }
+
+      // Refresh the billing entries
+      await loadBillingEntries();
+      
+      // Reset form and close modal
+      setFormData({ client_id: '', case_id: '', hours: 0, rate: 0, notes: '' });
+      setIsModalOpen(false);
+      setEditingEntry(null);
+    } catch (err) {
+      console.error('Error creating billing entry:', err);
+      setError(t('billing.failedToCreateEntry'));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSelectEntry = (id: string) => {
+  // Update existing billing entry
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingEntry || !formData.client_id || !formData.case_id || formData.hours <= 0 || formData.rate <= 0) {
+      setError(t('billing.fillAllFields'));
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError(null);
+
+      const { error } = await supabase
+        .from('billing_entries')
+        .update({
+          client_id: parseInt(formData.client_id),
+          case_id: parseInt(formData.case_id),
+          hours: formData.hours,
+          rate: formData.rate,
+          notes: formData.notes
+        })
+        .eq('id', editingEntry.id);
+
+      if (error) {
+        throw error;
+      }
+
+      // Refresh the billing entries
+      await loadBillingEntries();
+      
+      // Reset form and close modal
+      setFormData({ client_id: '', case_id: '', hours: 0, rate: 0, notes: '' });
+      setIsModalOpen(false);
+      setEditingEntry(null);
+    } catch (err) {
+      console.error('Error updating billing entry:', err);
+      setError(t('billing.failedToUpdateEntry'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Delete billing entry
+  const handleDelete = async (entryId: number) => {
+    if (!confirm(t('billing.confirmDelete'))) {
+      return;
+    }
+
+    try {
+      setError(null);
+
+      const { error } = await supabase
+        .from('billing_entries')
+        .delete()
+        .eq('id', entryId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Refresh the billing entries
+      await loadBillingEntries();
+    } catch (err) {
+      console.error('Error deleting billing entry:', err);
+      setError(t('billing.failedToDeleteEntry'));
+    }
+  };
+
+  // Open edit modal
+  const handleEdit = (entry: BillingEntryWithDetails) => {
+    setEditingEntry(entry);
+    setFormData({
+      client_id: entry.client_id.toString(),
+      case_id: entry.case_id.toString(),
+      hours: entry.hours,
+      rate: entry.rate,
+      notes: entry.notes || ''
+    });
+    setIsModalOpen(true);
+  };
+
+  // Open add modal
+  const handleAdd = () => {
+    setEditingEntry(null);
+    setFormData({ client_id: '', case_id: '', hours: 0, rate: 0, notes: '' });
+    setIsModalOpen(true);
+  };
+
+  const handleSelectEntry = (id: number) => {
     setSelectedEntries(prev => 
       prev.includes(id) 
         ? prev.filter(entryId => entryId !== id)
@@ -155,7 +341,7 @@ export default function BillingPage() {
 
   const generateInvoice = () => {
     if (selectedEntries.length === 0) {
-      alert('Please select at least one billing entry to generate an invoice');
+      setError(t('billing.selectEntriesForInvoice'));
       return;
     }
     
@@ -184,6 +370,22 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+          <div>
+            <p className="text-sm text-red-800">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-xs text-red-600 hover:text-red-800 underline mt-1"
+            >
+              {t('common.dismiss')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 lg:p-6">
         <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
@@ -197,7 +399,7 @@ export default function BillingPage() {
               <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">${totalAmount.toLocaleString()}</p>
             </div>
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={handleAdd}
               className="flex items-center justify-center space-x-2 bg-primary text-primary-foreground px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-primary/90 transition-colors duration-200 w-full sm:w-auto text-sm sm:text-base"
             >
               <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -350,165 +552,249 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Mobile Card Layout */}
-        <div className="block sm:hidden">
-          <div className="divide-y divide-border">
-            {billingEntries.map((entry) => (
-              <div key={entry.id} className="p-3 sm:p-4 hover:bg-accent transition-colors duration-200">
-                <div className="flex items-start space-x-3 mb-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedEntries.includes(entry.id)}
-                    onChange={() => handleSelectEntry(entry.id)}
-                    className="rounded border-border text-primary focus:ring-primary mt-1"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center mb-1">
-                      <User className="w-4 h-4 text-muted-foreground mr-2 flex-shrink-0" />
-                      <span className="text-sm font-medium text-foreground truncate">{entry.client}</span>
-                    </div>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <Briefcase className="w-3 h-3 mr-1" />
-                      <span className="truncate">{entry.case}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center text-muted-foreground">
-                    <Calendar className="w-3 h-3 mr-1" />
-                    <span>{entry.date}</span>
-                  </div>
-                  <div className="flex items-center text-muted-foreground">
-                    <Clock className="w-3 h-3 mr-1" />
-                    <span>{entry.hours}h</span>
-                  </div>
-                  <div className="flex items-center text-muted-foreground">
-                    <DollarSign className="w-3 h-3 mr-1" />
-                    <span>${entry.rate}/h</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-medium text-foreground">${entry.total.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">{t('billing.loadingEntries')}</span>
           </div>
-        </div>
+        )}
 
-        {/* Desktop Table Layout */}
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted">
-              <tr>
-                <th className="px-3 lg:px-6 py-3 text-left">
-                  <input
-                    type="checkbox"
-                    checked={selectedEntries.length === billingEntries.length && billingEntries.length > 0}
-                    onChange={handleSelectAll}
-                    className="rounded border-border text-primary focus:ring-primary"
-                  />
-                </th>
-                <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {t('billing.client')}
-                </th>
-                <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                  {t('billing.case')}
-                </th>
-                <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
-                  {t('common.date')}
-                </th>
-                <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {t('billing.hours')}
-                </th>
-                <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                  {t('billing.rate')}
-                </th>
-                <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {t('common.total')}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-card divide-y divide-border">
-              {billingEntries.map((entry, index) => (
-                <tr key={entry.id} className={`hover:bg-accent transition-colors duration-200 ${
-                  index % 2 === 0 ? 'bg-card' : 'bg-muted/50'
-                }`}>
-                  <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
+        {/* Empty State */}
+        {!loading && billingEntries.length === 0 && (
+          <div className="text-center py-12">
+            <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">{t('billing.noBillingEntries')}</h3>
+            <p className="text-muted-foreground mb-4">{t('billing.getStarted')}</p>
+            <button
+              onClick={handleAdd}
+              className="inline-flex items-center space-x-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors duration-200"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('billing.addTimeEntry')}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Mobile Card Layout */}
+        {!loading && billingEntries.length > 0 && (
+          <div className="block sm:hidden">
+            <div className="divide-y divide-border">
+              {billingEntries.map((entry) => (
+                <div key={entry.id} className="p-3 sm:p-4 hover:bg-accent transition-colors duration-200">
+                  <div className="flex items-start space-x-3 mb-3">
                     <input
                       type="checkbox"
                       checked={selectedEntries.includes(entry.id)}
                       onChange={() => handleSelectEntry(entry.id)}
+                      className="rounded border-border text-primary focus:ring-primary mt-1"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center mb-1">
+                        <User className="w-4 h-4 text-muted-foreground mr-2 flex-shrink-0" />
+                        <span className="text-sm font-medium text-foreground truncate">{entry.clientName}</span>
+                      </div>
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        <Briefcase className="w-3 h-3 mr-1" />
+                        <span className="truncate">{entry.caseName}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleEdit(entry)}
+                        className="text-muted-foreground hover:text-foreground transition-colors duration-200"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(entry.id)}
+                        className="text-muted-foreground hover:text-red-600 transition-colors duration-200"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center text-muted-foreground">
+                      <Calendar className="w-3 h-3 mr-1" />
+                      <span>{new Date(entry.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center text-muted-foreground">
+                      <Clock className="w-3 h-3 mr-1" />
+                      <span>{entry.hours}h</span>
+                    </div>
+                    <div className="flex items-center text-muted-foreground">
+                      <DollarSign className="w-3 h-3 mr-1" />
+                      <span>${entry.rate}/h</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-medium text-foreground">${entry.total.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  {entry.notes && (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      <span className="font-medium">{t('billing.notes')}:</span> {entry.notes}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Desktop Table Layout */}
+        {!loading && billingEntries.length > 0 && (
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="px-3 lg:px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedEntries.length === billingEntries.length && billingEntries.length > 0}
+                      onChange={handleSelectAll}
                       className="rounded border-border text-primary focus:ring-primary"
                     />
-                  </td>
-                  <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <User className="w-4 h-4 text-muted-foreground mr-2" />
-                      <span className="text-sm font-medium text-foreground truncate max-w-[120px]">{entry.client}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 lg:px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                    <div className="flex items-center">
-                      <Briefcase className="w-4 h-4 text-muted-foreground mr-2" />
-                      <span className="text-sm text-foreground truncate max-w-[150px]">{entry.case}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 lg:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 text-muted-foreground mr-2" />
-                      <span className="text-sm text-foreground">{entry.date}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Clock className="w-4 h-4 text-muted-foreground mr-2" />
-                      <span className="text-sm text-foreground">{entry.hours}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 lg:px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                    <div className="flex items-center">
-                      <DollarSign className="w-4 h-4 text-muted-foreground mr-2" />
-                      <span className="text-sm text-foreground">${entry.rate}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-foreground">${entry.total.toLocaleString()}</span>
-                  </td>
+                  </th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {t('billing.client')}
+                  </th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
+                    {t('billing.case')}
+                  </th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
+                    {t('common.date')}
+                  </th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {t('billing.hours')}
+                  </th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
+                    {t('billing.rate')}
+                  </th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {t('common.total')}
+                  </th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {t('common.actions')}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-card divide-y divide-border">
+                {billingEntries.map((entry, index) => (
+                  <tr key={entry.id} className={`hover:bg-accent transition-colors duration-200 ${
+                    index % 2 === 0 ? 'bg-card' : 'bg-muted/50'
+                  }`}>
+                    <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedEntries.includes(entry.id)}
+                        onChange={() => handleSelectEntry(entry.id)}
+                        className="rounded border-border text-primary focus:ring-primary"
+                      />
+                    </td>
+                    <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <User className="w-4 h-4 text-muted-foreground mr-2" />
+                        <span className="text-sm font-medium text-foreground truncate max-w-[120px]">{entry.clientName}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 lg:px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                      <div className="flex items-center">
+                        <Briefcase className="w-4 h-4 text-muted-foreground mr-2" />
+                        <span className="text-sm text-foreground truncate max-w-[150px]">{entry.caseName}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 lg:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                      <div className="flex items-center">
+                        <Calendar className="w-4 h-4 text-muted-foreground mr-2" />
+                        <span className="text-sm text-foreground">{new Date(entry.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <Clock className="w-4 h-4 text-muted-foreground mr-2" />
+                        <span className="text-sm text-foreground">{entry.hours}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 lg:px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                      <div className="flex items-center">
+                        <DollarSign className="w-4 h-4 text-muted-foreground mr-2" />
+                        <span className="text-sm text-foreground">${entry.rate}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-foreground">${entry.total.toLocaleString()}</span>
+                    </td>
+                    <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEdit(entry)}
+                          className="text-muted-foreground hover:text-foreground transition-colors duration-200"
+                          title="Edit entry"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(entry.id)}
+                          className="text-muted-foreground hover:text-red-600 transition-colors duration-200"
+                          title="Delete entry"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Time Entry Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={t('billing.addTimeEntry')}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingEntry(null);
+          setFormData({ client_id: '', case_id: '', hours: 0, rate: 0, notes: '' });
+        }}
+        title={editingEntry ? t('billing.editTimeEntry') : t('billing.addTimeEntry')}
         size="sm"
       >
-        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+        <form onSubmit={editingEntry ? handleUpdate : handleSubmit} className="space-y-3 sm:space-y-4">
           <FormField label={t('billing.client')} required>
-            <FormInput
-              name="client"
-              value={formData.client}
+            <FormSelect
+              name="client_id"
+              value={formData.client_id}
               onChange={handleInputChange}
-              placeholder={t('billing.enterClientName')}
               required
               className="text-sm sm:text-base"
-            />
+            >
+              <option value="">{t('billing.selectClient')}</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </FormSelect>
           </FormField>
 
           <FormField label={t('billing.case')} required>
-            <FormInput
-              name="case"
-              value={formData.case}
+            <FormSelect
+              name="case_id"
+              value={formData.case_id}
               onChange={handleInputChange}
-              placeholder={t('billing.enterCaseName')}
               required
               className="text-sm sm:text-base"
-            />
+            >
+              <option value="">{t('billing.selectCase')}</option>
+              {cases.map((caseItem) => (
+                <option key={caseItem.id} value={caseItem.id}>
+                  {caseItem.title}
+                </option>
+              ))}
+            </FormSelect>
           </FormField>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -541,9 +827,25 @@ export default function BillingPage() {
             </FormField>
           </div>
 
+          <FormField label={t('billing.notes')}>
+            <FormTextarea
+              name="notes"
+              value={formData.notes}
+              onChange={handleInputChange}
+              placeholder={t('billing.optionalNotes')}
+              className="text-sm sm:text-base"
+              rows={3}
+            />
+          </FormField>
+
           <FormActions
-            onCancel={() => setIsModalOpen(false)}
-            submitText={t('common.add')}
+            onCancel={() => {
+              setIsModalOpen(false);
+              setEditingEntry(null);
+              setFormData({ client_id: '', case_id: '', hours: 0, rate: 0, notes: '' });
+            }}
+            submitText={editingEntry ? t('billing.updateEntry') : t('common.add')}
+            isLoading={submitting}
           />
         </form>
       </Modal>

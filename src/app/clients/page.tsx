@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Plus, 
@@ -10,10 +10,14 @@ import {
   User,
   Mail,
   Phone,
-  FileText
+  FileText,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import { FormField, FormInput, FormTextarea, FormActions } from '../../components/ui/Form';
+import { supabase } from '@/lib/supabaseClient';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Client {
   id: number;
@@ -22,55 +26,25 @@ interface Client {
   phone: string;
   oib: string;
   notes: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export default function ClientsPage() {
   const router = useRouter();
   
-  // Mock initial data
-  const [clients, setClients] = useState<Client[]>([
-    {
-      id: 1,
-      name: 'Marko Horvat',
-      email: 'marko.horvat@zagreb.hr',
-      phone: '+385 91 123 4567',
-      oib: '12345678901',
-      notes: 'Korporativni klijent, preferira email komunikaciju'
-    },
-    {
-      id: 2,
-      name: 'Ana Novak',
-      email: 'ana.novak@nekretnine.hr',
-      phone: '+385 92 234 5678',
-      oib: '23456789012',
-      notes: 'Specijalist za nekretnine i trgovinu'
-    },
-    {
-      id: 3,
-      name: 'Petar Kovačević',
-      email: 'petar.kovacevic@obitelj.hr',
-      phone: '+385 95 345 6789',
-      oib: '34567890123',
-      notes: 'Dugogodišnji klijent, obiteljsko pravo'
-    },
-    {
-      id: 4,
-      name: 'Ivana Babić',
-      email: 'ivana.babic@poduzetnik.hr',
-      phone: '+385 98 456 7890',
-      oib: '45678901234',
-      notes: 'Osnivanje tvrtki i ugovori'
-    },
-    {
-      id: 5,
-      name: 'Tomislav Jurić',
-      email: 'tomislav.juric@tehnologija.hr',
-      phone: '+385 99 567 8901',
-      oib: '56789012345',
-      notes: 'Specijalist za intelektualno vlasništvo i patente'
-    }
-  ]);
-
+  // Safe access to language context
+  let t: (key: string) => string;
+  try {
+    const languageContext = useLanguage();
+    t = languageContext.t;
+  } catch (error) {
+    // Fallback function if context is not available
+    t = (key: string) => key;
+  }
+  
+  // State management
+  const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -81,6 +55,40 @@ export default function ClientsPage() {
     oib: '',
     notes: ''
   });
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+
+  // Load clients from Supabase
+  const loadClients = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      setClients(data || []);
+    } catch (err) {
+      console.error('Error loading clients:', err);
+      setError('Greška pri učitavanju klijenata. Molimo pokušajte ponovno.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load clients on component mount
+  useEffect(() => {
+    loadClients();
+  }, []);
 
   // Filter clients based on search term
   const filteredClients = clients.filter(client =>
@@ -98,29 +106,84 @@ export default function ClientsPage() {
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (editingClient) {
-      // Update existing client
-      setClients(prev => prev.map(client =>
-        client.id === editingClient.id
-          ? { ...client, ...formData }
-          : client
-      ));
-    } else {
-      // Add new client
-      const newClient: Client = {
-        id: Date.now(), // Simple ID generation
-        ...formData
-      };
-      setClients(prev => [...prev, newClient]);
-    }
+    try {
+      setSubmitting(true);
+      setError(null);
 
-    // Reset form and close modal
-    setFormData({ name: '', email: '', phone: '', oib: '', notes: '' });
-    setEditingClient(null);
-    setIsModalOpen(false);
+
+      // Validate form data
+      if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim() || !formData.oib.trim()) {
+        throw new Error('Please fill in all required fields.');
+      }
+
+      if (formData.oib.length !== 11) {
+        throw new Error('OIB must be exactly 11 digits.');
+      }
+
+      if (editingClient) {
+        // Update existing client
+        const { data, error } = await supabase
+          .from('clients')
+          .update({
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            oib: formData.oib,
+            notes: formData.notes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingClient.id)
+          .select();
+
+        if (error) {
+          console.error('Supabase update error:', error);
+          throw error;
+        }
+
+        console.log('Client updated successfully:', data);
+      } else {
+        // Add new client
+        const { data, error } = await supabase
+          .from('clients')
+          .insert([{
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            oib: formData.oib,
+            notes: formData.notes
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Supabase insert error:', error);
+          throw error;
+        }
+
+        console.log('Client created successfully:', data);
+
+        // Redirect to the newly created client detail page
+        if (data) {
+          router.push(`/clients/${data.id}`);
+          return; // Exit early to prevent form reset
+        }
+      }
+
+      // Reload clients and reset form (only for updates)
+      await loadClients();
+      setFormData({ name: '', email: '', phone: '', oib: '', notes: '' });
+      setEditingClient(null);
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Error saving client:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Greška pri spremanju klijenta. Molimo pokušajte ponovno.';
+      setError(errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Handle edit button click
@@ -137,9 +200,31 @@ export default function ClientsPage() {
   };
 
   // Handle delete button click
-  const handleDelete = (clientId: number) => {
-    if (confirm('Are you sure you want to delete this client?')) {
-      setClients(prev => prev.filter(client => client.id !== clientId));
+  const handleDelete = async (clientId: number) => {
+    if (confirm(t('clients.deleteConfirm'))) {
+      try {
+        setError(null);
+        
+
+        const { data, error } = await supabase
+          .from('clients')
+          .delete()
+          .eq('id', clientId)
+          .select();
+
+        if (error) {
+          console.error('Supabase delete error:', error);
+          throw error;
+        }
+
+        console.log('Client deleted successfully:', data);
+        // Reload clients after deletion
+        await loadClients();
+      } catch (err) {
+        console.error('Error deleting client:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Greška pri brisanju klijenta. Molimo pokušajte ponovno.';
+        setError(errorMessage);
+      }
     }
   };
 
@@ -161,15 +246,15 @@ export default function ClientsPage() {
       <div className="bg-card rounded-lg shadow-sm border border-border p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Clients</h2>
-            <p className="text-muted-foreground text-sm sm:text-base">Manage your law firm&apos;s client database.</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">{t('clients.title')}</h2>
+            <p className="text-muted-foreground text-sm sm:text-base">{t('clients.subtitle')}</p>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center justify-center space-x-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors duration-200 w-full sm:w-auto"
           >
             <Plus className="w-5 h-5" />
-            <span>Add Client</span>
+            <span>{t('clients.addClient')}</span>
           </button>
         </div>
       </div>
@@ -180,7 +265,7 @@ export default function ClientsPage() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
           <input
             type="text"
-            placeholder="Search by name or OIB..."
+            placeholder={t('clients.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-input text-foreground"
@@ -188,102 +273,121 @@ export default function ClientsPage() {
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-5 h-5 text-destructive" />
+            <p className="text-destructive font-medium">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Clients Table */}
       <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px]">
-            <thead className="bg-muted border-b border-border">
-              <tr>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
-                  Email
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                  Phone
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
-                  OIB
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
-                  Notes
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-card divide-y divide-border">
-              {filteredClients.map((client, index) => (
-                <tr 
-                  key={client.id} 
-                  className={`hover:bg-accent cursor-pointer transition-colors duration-200 ${
-                    index % 2 === 0 ? 'bg-card' : 'bg-muted/50'
-                  }`}
-                  onClick={() => handleRowClick(client.id)}
-                >
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mr-3">
-                        <User className="w-4 h-4 text-primary" />
-                      </div>
-                      <div className="text-sm font-medium text-foreground">{client.name}</div>
-                    </div>
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
-                      {client.email}
-                    </div>
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
-                      {client.phone}
-                    </div>
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-foreground hidden lg:table-cell">
-                    {client.oib}
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 text-sm text-muted-foreground max-w-xs truncate hidden lg:table-cell">
-                    {client.notes}
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div 
-                      className="flex items-center space-x-2"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        onClick={() => handleEdit(client)}
-                        className="text-primary hover:text-primary/80 p-1 rounded hover:bg-primary/10 transition-colors duration-200"
-                        title="Edit client"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(client.id)}
-                        className="text-destructive hover:text-destructive/80 p-1 rounded hover:bg-destructive/10 transition-colors duration-200"
-                        title="Delete client"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredClients.length === 0 && (
+        {loading ? (
           <div className="text-center py-12">
-            <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">No clients found</h3>
-            <p className="text-muted-foreground">
-              {searchTerm ? 'Try adjusting your search terms.' : 'Get started by adding your first client.'}
-            </p>
+            <Loader2 className="w-8 h-8 text-muted-foreground mx-auto mb-4 animate-spin" />
+            <p className="text-muted-foreground">{t('clients.loadingClients')}</p>
           </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[600px]">
+                <thead className="bg-muted border-b border-border">
+                  <tr>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      {t('clients.name')}
+                    </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
+                      {t('clients.email')}
+                    </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
+                      {t('clients.phone')}
+                    </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
+                      {t('clients.oib')}
+                    </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
+                      {t('clients.notes')}
+                    </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      {t('common.actions')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-card divide-y divide-border">
+                  {filteredClients.map((client, index) => (
+                    <tr 
+                      key={client.id} 
+                      className={`hover:bg-accent cursor-pointer transition-colors duration-200 ${
+                        index % 2 === 0 ? 'bg-card' : 'bg-muted/50'
+                      }`}
+                      onClick={() => handleRowClick(client.id)}
+                    >
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mr-3">
+                            <User className="w-4 h-4 text-primary" />
+                          </div>
+                          <div className="text-sm font-medium text-foreground">{client.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
+                          {client.email}
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
+                          {client.phone}
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-foreground hidden lg:table-cell">
+                        {client.oib}
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 text-sm text-muted-foreground max-w-xs truncate hidden lg:table-cell">
+                        {client.notes}
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div 
+                          className="flex items-center space-x-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() => handleEdit(client)}
+                            className="text-primary hover:text-primary/80 p-1 rounded hover:bg-primary/10 transition-colors duration-200"
+                            title="Edit client"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(client.id)}
+                            className="text-destructive hover:text-destructive/80 p-1 rounded hover:bg-destructive/10 transition-colors duration-200"
+                            title="Delete client"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredClients.length === 0 && !loading && (
+              <div className="text-center py-12">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">{t('clients.noClientsFound')}</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm ? t('clients.tryAdjusting') : t('clients.getStarted')}
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -291,67 +395,68 @@ export default function ClientsPage() {
       <Modal
         isOpen={isModalOpen}
         onClose={handleModalClose}
-        title={editingClient ? 'Edit Client' : 'Add New Client'}
+        title={editingClient ? t('clients.editClient') : t('clients.addNewClient')}
         size="sm"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormField label="Name" required>
+          <FormField label={t('clients.name')} required>
             <FormInput
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              placeholder="Enter client name"
+              placeholder={t('clients.enterName')}
               required
             />
           </FormField>
 
-          <FormField label="Email" required>
+          <FormField label={t('clients.email')} required>
             <FormInput
               type="email"
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              placeholder="Enter email address"
+              placeholder={t('clients.enterEmail')}
               required
             />
           </FormField>
 
-          <FormField label="Phone" required>
+          <FormField label={t('clients.phone')} required>
             <FormInput
               type="tel"
               name="phone"
               value={formData.phone}
               onChange={handleInputChange}
-              placeholder="Enter phone number"
+              placeholder={t('clients.enterPhone')}
               required
             />
           </FormField>
 
-          <FormField label="OIB" required>
+          <FormField label={t('clients.oib')} required>
             <FormInput
               name="oib"
               value={formData.oib}
               onChange={handleInputChange}
               maxLength={11}
-              placeholder="Enter OIB (11 digits)"
+              placeholder={t('clients.enterOIB')}
               required
             />
           </FormField>
 
-          <FormField label="Notes">
+          <FormField label={t('clients.notes')}>
             <FormTextarea
               name="notes"
               value={formData.notes}
               onChange={handleInputChange}
               rows={3}
-              placeholder="Enter any additional notes"
+              placeholder={t('clients.enterNotes')}
             />
           </FormField>
 
           <FormActions
             onCancel={handleModalClose}
             onSubmit={() => {}}
-            submitText={editingClient ? 'Update Client' : 'Add Client'} 
+            submitText={editingClient ? t('clients.updateClient') : t('clients.addClient')}
+            isLoading={submitting}
           />
         </form>
       </Modal>

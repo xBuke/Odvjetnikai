@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import Breadcrumb from '../ui/Breadcrumb';
@@ -13,10 +14,15 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  // Public routes that don't need the main layout
+  const publicRoutes = ['/login', '/register'];
+  const isPublicRoute = publicRoutes.includes(pathname);
 
   // Generate breadcrumb items based on current path
   const getBreadcrumbItems = () => {
@@ -45,6 +51,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
     return items;
   };
 
+  // For public routes (login/register), render without sidebar and topbar
+  if (isPublicRoute) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        {children}
+      </div>
+    );
+  }
+
+  // For authenticated routes, render with full layout
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Sidebar */}

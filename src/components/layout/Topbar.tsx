@@ -1,8 +1,9 @@
 'use client';
 
 import { Menu, LogOut, User } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import LanguageToggle from '@/components/ui/LanguageToggle';
 
@@ -12,6 +13,8 @@ interface TopbarProps {
 
 export default function Topbar({ onMenuClick }: TopbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, signOut } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -32,9 +35,17 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
     t = (key: string) => fallbackTranslations[key] || key;
   }
   
-  const handleLogout = () => {
-    // Placeholder for logout functionality
-    console.log('Logout clicked');
+  const handleLogout = async () => {
+    try {
+      const { error } = await signOut();
+      if (error) {
+        console.error('Logout error:', error);
+      } else {
+        router.push('/login');
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
   };
 
   // Get page title based on current path
@@ -86,8 +97,12 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
               <User className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="hidden sm:block">
-              <p className="text-sm font-semibold text-foreground">John Doe</p>
-              <p className="text-xs text-muted-foreground">Senior Partner</p>
+              <p className="text-sm font-semibold text-foreground">
+                {user?.email?.split('@')[0] || 'User'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {user?.email || 'lawyer@firm.com'}
+              </p>
             </div>
           </div>
 

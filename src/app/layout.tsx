@@ -3,6 +3,7 @@ import { Inter, Merriweather, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import MainLayout from "@/components/layout/MainLayout";
 import ClientProviders from "@/components/providers/ClientProviders";
+import RouteProtection from "@/components/auth/RouteProtection";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -39,9 +40,11 @@ export default function RootLayout({
         className={`${inter.variable} ${merriweather.variable} ${geistMono.variable} antialiased`}
       >
         <ClientProviders>
-          <MainLayout>
-            {children}
-          </MainLayout>
+          <RouteProtection>
+            <MainLayout>
+              {children}
+            </MainLayout>
+          </RouteProtection>
         </ClientProviders>
       </body>
     </html>

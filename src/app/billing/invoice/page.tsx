@@ -10,22 +10,39 @@ import {
   User,
   Briefcase,
   Clock,
-  DollarSign
+  DollarSign,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface BillingEntry {
-  id: string;
-  client: string;
-  case: string;
+  id: number;
+  client_id: number;
+  case_id: number;
   hours: number;
   rate: number;
+  notes?: string;
+  created_at: string;
+  updated_at?: string;
+  clients?: {
+    name: string;
+  };
+  cases?: {
+    title: string;
+  };
+}
+
+interface BillingEntryWithDetails extends BillingEntry {
+  clientName: string;
+  caseName: string;
   total: number;
-  date: string;
 }
 
 interface InvoiceData {
-  entries: BillingEntry[];
+  entries: BillingEntryWithDetails[];
   total: number;
 }
 
@@ -33,6 +50,8 @@ export default function InvoicePreviewPage() {
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
   const [invoiceNumber] = useState(`INV-${Date.now().toString().slice(-6)}`);
   const [invoiceDate] = useState(new Date().toLocaleDateString());
+  const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     // Get invoice data from sessionStorage
@@ -44,28 +63,93 @@ export default function InvoicePreviewPage() {
       setInvoiceData({
         entries: [
           {
-            id: '1',
-            client: 'Smith & Associates',
-            case: 'Smith vs. Johnson Corp',
+            id: 1,
+            client_id: 1,
+            case_id: 1,
             hours: 8.5,
             rate: 250,
-            total: 2125,
-            date: '2024-12-10'
+            notes: '',
+            created_at: '2024-12-10',
+            clientName: 'Smith & Associates',
+            caseName: 'Smith vs. Johnson Corp',
+            total: 2125
           }
         ],
         total: 2125
       });
     }
+    setLoading(false);
   }, []);
 
   const handlePrint = () => {
     window.print();
   };
 
-  const handleDownload = () => {
-    // In a real application, this would generate a PDF
-    alert('PDF download functionality would be implemented here');
+  const handleDownload = async () => {
+    if (!invoiceData) return;
+    
+    try {
+      setDownloading(true);
+      
+      // Get the invoice content element
+      const invoiceElement = document.getElementById('invoice-content');
+      if (!invoiceElement) {
+        throw new Error('Invoice content not found');
+      }
+
+      // Create canvas from HTML element
+      const canvas = await html2canvas(invoiceElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+
+      // Create PDF
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Calculate dimensions
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 295; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+
+      let position = 0;
+
+      // Add image to PDF
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Add new pages if content is longer than one page
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // Download the PDF
+      pdf.save(`invoice-${invoiceNumber}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-16 h-16 text-muted-foreground mx-auto mb-4 animate-spin" />
+          <h2 className="text-xl font-semibold text-foreground mb-2">Loading Invoice</h2>
+          <p className="text-muted-foreground">Please wait while we prepare your invoice...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!invoiceData) {
     return (
@@ -86,7 +170,7 @@ export default function InvoicePreviewPage() {
     );
   }
 
-  const clientName = invoiceData.entries[0]?.client || 'Unknown Client';
+  const clientName = invoiceData.entries[0]?.clientName || 'Unknown Client';
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,10 +188,15 @@ export default function InvoicePreviewPage() {
           <div className="flex items-center space-x-3">
             <button
               onClick={handleDownload}
-              className="flex items-center space-x-2 bg-muted text-muted-foreground px-4 py-2 rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors duration-200"
+              disabled={downloading}
+              className="flex items-center space-x-2 bg-muted text-muted-foreground px-4 py-2 rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download className="w-4 h-4" />
-              <span>Download PDF</span>
+              {downloading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              <span>{downloading ? 'Generating...' : 'Download PDF'}</span>
             </button>
             <button
               onClick={handlePrint}
@@ -122,7 +211,7 @@ export default function InvoicePreviewPage() {
 
       {/* Invoice Content */}
       <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+        <div id="invoice-content" className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
           {/* Invoice Header */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-8">
             <div className="flex items-center justify-between">
@@ -198,13 +287,13 @@ export default function InvoicePreviewPage() {
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
                           <div className="flex items-center">
                             <Calendar className="w-4 h-4 text-muted-foreground mr-2" />
-                            {new Date(entry.date).toLocaleDateString()}
+                            {new Date(entry.created_at).toLocaleDateString()}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-foreground">
                           <div className="flex items-center">
                             <Briefcase className="w-4 h-4 text-muted-foreground mr-2" />
-                            {entry.case}
+                            {entry.caseName}
                           </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
@@ -228,6 +317,25 @@ export default function InvoicePreviewPage() {
                 </table>
               </div>
             </div>
+
+            {/* Notes Section */}
+            {invoiceData.entries.some(entry => entry.notes) && (
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Notes</h3>
+                <div className="space-y-2">
+                  {invoiceData.entries
+                    .filter(entry => entry.notes)
+                    .map((entry) => (
+                      <div key={entry.id} className="bg-muted p-3 rounded-lg">
+                        <div className="text-sm text-muted-foreground mb-1">
+                          {entry.caseName} - {new Date(entry.created_at).toLocaleDateString()}
+                        </div>
+                        <div className="text-sm text-foreground">{entry.notes}</div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
 
             {/* Invoice Summary */}
             <div className="flex justify-end">

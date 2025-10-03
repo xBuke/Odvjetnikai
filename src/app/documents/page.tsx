@@ -30,7 +30,7 @@ import {
   getUserOrThrow
 } from '@/lib/supabaseHelpers';
 import { getDocumentTypeOptions, getDocumentLabel } from '@/lib/documentTypes';
-import type { DocumentType, Case, Document } from '../../types/supabase';
+import type { DocumentType, Document } from '@/types/supabase';
 import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
 import { validateFile, validateDocumentType, getFileValidationErrorMessage } from '@/lib/fileValidation';
 import { getContractTemplates } from '@/lib/contractTemplates';
@@ -39,14 +39,18 @@ import TrialBanner from '@/components/billing/TrialBanner';
 import { canCreateEntity } from '@/lib/ui-limit';
 
 // Use generated types from Supabase
-type CaseWithClient = Case & {
-  clientName: string;
-};
 
 type DocumentWithCase = Document & {
   cases?: {
     title: string;
   };
+};
+
+type CaseListItem = {
+  id: string;
+  title: string;
+  clientName: string;
+  status: string;
 };
 
 interface Template {
@@ -74,8 +78,8 @@ export default function DocumentsPage() {
   }
 
   // State management
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [cases, setCases] = useState<Case[]>([]);
+  const [documents, setDocuments] = useState<DocumentWithCase[]>([]);
+  const [cases, setCases] = useState<CaseListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,13 +110,13 @@ export default function DocumentsPage() {
     try {
       const data = await selectWithUserId(supabase, 'cases', {}, '*, clients(name)') as unknown as Record<string, unknown>[];
 
-      // Transform data to match Case interface
-      const casesWithClient: Case[] = (data || []).map(caseItem => ({
+      // Transform data to match CaseListItem interface
+      const casesWithClient: CaseListItem[] = (data || []).map(caseItem => ({
         id: caseItem.id as string,
         title: caseItem.title as string,
         clientName: (caseItem.clients as Record<string, unknown>)?.name as string || 'Unknown Client',
         status: caseItem.status as string
-      } as Case));
+      }));
 
       setCases(casesWithClient);
     } catch (err) {
@@ -169,11 +173,11 @@ export default function DocumentsPage() {
       };
 
       // For case title sorting, we need to handle it differently since it's a joined field
-      let data: Document[];
+      let data: DocumentWithCase[];
       
       if (sortField === 'case_title') {
         // For case title sorting, we'll fetch all data and sort in JavaScript
-        data = await selectWithUserId(supabase, 'documents', {}, '*, cases(title)') as unknown as Document[];
+        data = await selectWithUserId(supabase, 'documents', {}, '*, cases(title)') as unknown as DocumentWithCase[];
         
         // Sort by case title in JavaScript
         data.sort((a, b) => {
@@ -184,7 +188,7 @@ export default function DocumentsPage() {
         });
       } else {
         // For other fields, use database sorting
-        data = await selectWithUserIdAndOrder(supabase, 'documents', {}, '*, cases(title)', orderBy) as unknown as Document[];
+        data = await selectWithUserIdAndOrder(supabase, 'documents', {}, '*, cases(title)', orderBy) as unknown as DocumentWithCase[];
       }
       
       setDocuments(data || []);
@@ -399,21 +403,29 @@ export default function DocumentsPage() {
       // Import the document URL utility
       const { getSignedUrlViaApi, isDemoMode } = await import('@/lib/documentUrls');
       
-      let downloadUrl: string;
+      let downloadUrl: string | undefined;
       
       if (isDemoMode()) {
         // In demo mode, use public URL for easier access
-        const { data: { publicUrl } } = supabase.storage
-          .from('documents')
-          .getPublicUrl(document.file_url);
-        downloadUrl = publicUrl;
+        if (document.file_url) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('documents')
+            .getPublicUrl(document.file_url);
+          downloadUrl = publicUrl;
+        }
       } else {
         // In production, use signed URL for security
-        downloadUrl = await getSignedUrlViaApi(document.file_url);
+        if (document.file_url) {
+          downloadUrl = await getSignedUrlViaApi(document.file_url);
+        }
       }
       
       // Open file URL in new tab for download
-      window.open(downloadUrl, '_blank');
+      if (downloadUrl) {
+        window.open(downloadUrl, '_blank');
+      } else {
+        console.error('No file URL available for download');
+      }
     } catch (error) {
       console.error('Error generating download URL:', error);
       showToast('Greška pri preuzimanju dokumenta', 'error');
@@ -432,6 +444,9 @@ export default function DocumentsPage() {
         }
 
         // Extract file path from URL for storage deletion
+        if (!document.file_url) {
+          throw new Error('No file URL found for document');
+        }
         const urlParts = document.file_url.split('/');
         const fileName = urlParts[urlParts.length - 1];
         const filePath = `docs/${fileName}`;

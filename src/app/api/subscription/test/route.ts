@@ -26,27 +26,19 @@ export async function POST(request: NextRequest) {
 
     // Use the imported supabase client
 
-    // Look up user by email in auth.users
-    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (authError || !authUsers.users) {
-      console.error('Error finding user by email:', authError);
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+    // Look up user by email in profiles table
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("*")
+      .eq("email", email)
+      .single();
+
+    if (profileError || !profile) {
+      console.error("Error finding user by email:", profileError);
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const user = authUsers.users.find((u: { email?: string }) => u.email === email);
-    if (!user) {
-      console.error('Error finding user by email:', authError);
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    const userId = user.id;
+    const userId = profile.id;
 
     // Update user subscription in profiles table
     const { data: updatedProfile, error: updateError } = await supabase
@@ -112,37 +104,29 @@ export async function GET(request: NextRequest) {
 
     // Use the imported supabase client
 
-    // Look up user by email in auth.users
-    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (authError || !authUsers.users) {
-      console.error('Error finding user by email:', authError);
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+    // Look up user by email in profiles table
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("*")
+      .eq("email", email)
+      .single();
+
+    if (profileError || !profile) {
+      console.error("Error finding user by email:", profileError);
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const user = authUsers.users.find((u: { email?: string }) => u.email === email);
-    if (!user) {
-      console.error('Error finding user by email:', authError);
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    const userId = user.id;
+    const userId = profile.id;
 
     // Get current subscription status
-    const { data: profile, error: profileError } = await supabase
+    const { data: currentProfile, error: currentProfileError } = await supabase
       .from('profiles')
       .select('id, email, full_name, subscription_status, subscription_plan, updated_at')
       .eq('id', userId)
       .single();
 
-    if (profileError || !profile) {
-      console.error('Error fetching profile:', profileError);
+    if (currentProfileError || !currentProfile) {
+      console.error('Error fetching profile:', currentProfileError);
       return NextResponse.json(
         { error: 'Profile not found' },
         { status: 404 }
@@ -151,7 +135,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      user: profile
+      user: currentProfile
     });
 
   } catch (error) {

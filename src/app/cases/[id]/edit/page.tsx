@@ -12,7 +12,7 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { selectSingleWithUserId, updateWithUserId } from '@/lib/supabaseHelpers';
-import type { Case, CaseStatus } from '../../../types/supabase';
+import type { Case } from '@/types/supabase';
 
 // Use generated types from Supabase
 

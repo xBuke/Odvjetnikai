@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 // Initialize Stripe with secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
+  apiVersion: '2025-09-30.clover',
 });
 
 // Get webhook secret from environment variables
@@ -95,25 +95,18 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       console.log(`Looking up user by email: ${customerEmail}`);
     }
 
-    // Use Supabase Admin client to look up user by email
-    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    // Look up user by email in profiles table
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("*")
+      .eq("email", customerEmail)
+      .single();
 
-    if (listError) {
-      console.error('Error looking up user by email:', listError);
-      throw listError;
-    }
-
-    if (!users || users.length === 0) {
-      console.error(`No users found`);
+    if (profileError || !profile) {
+      console.error("Error finding user by email:", profileError);
       return;
     }
-
-    const user = users.find((u: { email?: string }) => u.email === customerEmail);
-    if (!user) {
-      console.error(`No user found with email: ${customerEmail}`);
-      return;
-    }
-    const userId = user.id;
+    const userId = profile.id;
 
     if (process.env.NODE_ENV === 'development') {
       console.log(`Found user: ${userId} for email: ${customerEmail}`);

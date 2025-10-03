@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { CheckCircle, Circle, ChevronRight } from 'lucide-react';
-import type { CaseStatus } from '../../types/supabase';
+import type { CaseStatus } from '@/types/supabase';
 
 // Re-export the generated type
 export type { CaseStatus };

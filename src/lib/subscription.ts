@@ -4,6 +4,9 @@
 
 import type { Profile } from '../../types/supabase';
 
+// Re-export Profile type for use in other modules
+export type { Profile };
+
 /**
  * Check if user is on trial
  */

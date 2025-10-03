@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '../../types/supabase';
+import type { Database } from '@/types/supabase';
 
 /**
  * Centralized Supabase operations with user context
@@ -51,7 +51,8 @@ export async function insertWithUserId(
     user_id: user.id
   }));
   
-  const { data: result, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: result, error } = await (supabase as any)
     .from(table)
     .insert(dataWithUserId)
     .select();
@@ -158,7 +159,8 @@ export async function updateWithUserId(
 ): Promise<Record<string, unknown>[]> {
   const user = await getUserOrThrow(supabase);
   
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from(table)
     .update(updates)
     .eq(idField, idValue)
@@ -254,7 +256,8 @@ export async function insertAndReturnWithUserId(
 ): Promise<Record<string, unknown>> {
   const user = await getUserOrThrow(supabase);
   
-  const { data: result, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: result, error } = await (supabase as any)
     .from(table)
     .insert([{ ...data, user_id: user.id }])
     .select()

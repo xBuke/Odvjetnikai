@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
-import { clientsApi, casesApi, documentsApi, billingApi, handleApiError, handleApiSuccess } from '@/lib/api-client';
+import { clientsApi, casesApi, billingApi, handleApiError, handleApiSuccess } from '@/lib/api-client';
 
 /**
  * Example component demonstrating how to use the new API routes
@@ -51,41 +51,6 @@ export default function ApiUsageExample() {
     }
   };
 
-  // Example: Update a client
-  const updateClient = async (clientId: string) => {
-    try {
-      setLoading(true);
-      
-      const response = await clientsApi.update(clientId, {
-        name: 'John Smith',
-        notes: 'Updated notes'
-      });
-
-      const updatedClient = handleApiSuccess(response, showToast, 'Client updated successfully');
-      console.log('Updated client:', updatedClient);
-      
-    } catch (error) {
-      handleApiError(error, showToast);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Example: Delete a client
-  const deleteClient = async (clientId: string) => {
-    try {
-      setLoading(true);
-      
-      const response = await clientsApi.delete(clientId);
-      handleApiSuccess(response, showToast, 'Client deleted successfully');
-      
-    } catch (error) {
-      handleApiError(error, showToast);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Example: Create a case
   const createCase = async () => {
     try {
@@ -95,6 +60,7 @@ export default function ApiUsageExample() {
         title: 'Test Case',
         client_id: 'client-uuid-here',
         status: 'Open',
+        case_status: 'Zaprimanje',
         notes: 'Test case notes'
       });
 
@@ -118,6 +84,7 @@ export default function ApiUsageExample() {
         case_id: 'case-uuid-here',
         amount: 150.00,
         description: 'Legal consultation',
+        billing_date: new Date().toISOString(),
         status: 'pending'
       });
 

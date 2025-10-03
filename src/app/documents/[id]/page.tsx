@@ -15,9 +15,9 @@ import {
 } from 'lucide-react';
 import { getDocumentLabel, type DocumentType } from '@/lib/documentTypes';
 import { supabase } from '@/lib/supabaseClient';
+// Document type is imported from documentTypes
 
-
-interface Document {
+interface MockDocument {
   id: string;
   name: string;
   caseId: string | null;
@@ -27,6 +27,7 @@ interface Document {
   type: DocumentType;
   description?: string;
   content?: string;
+  file_url?: string;
 }
 
 export default function DocumentDetailPage() {
@@ -36,7 +37,7 @@ export default function DocumentDetailPage() {
 
 
   // Mock documents data with additional details
-  const mockDocuments: Document[] = useMemo(() => [
+  const mockDocuments: MockDocument[] = useMemo(() => [
     {
       id: 'doc-1-uuid-1234-5678-9abc-def012345678',
       name: 'Ugovor o suradnji - Zagrebačka banka.pdf',
@@ -212,7 +213,7 @@ Net Income: $400,000`
     }
   ], []);
 
-  const [document, setDocument] = useState<Document | null>(null);
+  const [document, setDocument] = useState<MockDocument | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -234,15 +235,19 @@ Net Income: $400,000`
       
       let downloadUrl: string;
       
-      if (isDemoMode()) {
-        // In demo mode, use public URL for easier access
-        const { data: { publicUrl } } = supabase.storage
-          .from('documents')
-          .getPublicUrl(document.file_url);
-        downloadUrl = publicUrl;
+      if (document.file_url) {
+        if (isDemoMode()) {
+          // In demo mode, use public URL for easier access
+          const { data: { publicUrl } } = supabase.storage
+            .from('documents')
+            .getPublicUrl(document.file_url);
+          downloadUrl = publicUrl;
+        } else {
+          // In production, use signed URL for security
+          downloadUrl = await getSignedUrlViaApi(document.file_url);
+        }
       } else {
-        // In production, use signed URL for security
-        downloadUrl = await getSignedUrlViaApi(document.file_url);
+        throw new Error('No file URL available for this document');
       }
       
       // Open file URL in new tab for download

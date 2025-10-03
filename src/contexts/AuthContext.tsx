@@ -87,7 +87,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           role: 'user',
           full_name: user.user_metadata?.full_name || '',
           username: user.user_metadata?.username || '',
-          avatar_url: user.user_metadata?.avatar_url || ''
+          avatar_url: user.user_metadata?.avatar_url || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
         return;
       }

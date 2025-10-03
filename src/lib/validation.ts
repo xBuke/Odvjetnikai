@@ -20,9 +20,7 @@ export const updateClientSchema = createClientSchema.partial();
 export const createCaseSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title is too long'),
   client_id: z.string().uuid('Invalid client ID'),
-  status: z.enum(['Open', 'In Progress', 'Closed'], {
-    errorMap: () => ({ message: 'Status must be Open, In Progress, or Closed' })
-  }),
+  status: z.enum(['Open', 'In Progress', 'Closed']),
   notes: z.string().optional(),
   case_type: z.string().optional(),
   case_status: z.enum(['Zaprimanje', 'Priprema', 'Ročište', 'Presuda']).optional(),
@@ -68,7 +66,7 @@ export const createBillingEntrySchema = z.object({
 export const updateBillingEntrySchema = createBillingEntrySchema.partial();
 
 // API response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -80,7 +78,7 @@ export function validateRequestBody<T>(schema: z.ZodSchema<T>, body: unknown): T
     return schema.parse(body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errorMessage = error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
+      const errorMessage = error.issues.map((err) => `${err.path.join('.')}: ${err.message}`).join(', ');
       throw new Error(`Validation error: ${errorMessage}`);
     }
     throw error;

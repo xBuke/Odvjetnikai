@@ -34,7 +34,7 @@ import {
 import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
 import TrialBanner from '@/components/billing/TrialBanner';
 import { canCreateEntity } from '@/lib/ui-limit';
-import type { Client, Case, CaseStatus } from '../../../types/supabase';
+import type { Client, Case } from '@/types/supabase';
 
 // Use generated types from Supabase
 type CaseWithClient = Case & {

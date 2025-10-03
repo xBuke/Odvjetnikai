@@ -25,10 +25,12 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { selectSingleWithUserId, updateWithUserId } from '@/lib/supabaseHelpers';
 import CaseTimeline from '@/components/ui/CaseTimeline';
-import type { Case, CaseStatus } from '../../../types/supabase';
-
+import type { Case, CaseStatus, Client } from '@/types/supabase';
 
 // Use generated types from Supabase
+type CaseWithClient = Case & {
+  clients?: Pick<Client, 'name' | 'email' | 'phone' | 'oib' | 'notes'>;
+};
 
 interface TimelineEvent {
   id: string;
@@ -47,7 +49,7 @@ export default function CaseDetailPage() {
   const { } = useAuth();
   const caseId = params.id as string;
 
-  const [caseData, setCaseData] = useState<Case | null>(null);
+  const [caseData, setCaseData] = useState<CaseWithClient | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
@@ -121,7 +123,7 @@ export default function CaseDetailPage() {
       setError(null);
 
       // Fetch case with client information from Supabase
-      const caseData = await selectSingleWithUserId(supabase, 'cases', 'id', caseId, '*, clients(name, email, phone, oib, notes)') as unknown as Case;
+      const caseData = await selectSingleWithUserId(supabase, 'cases', 'id', caseId, '*, clients(name, email, phone, oib, notes)') as unknown as CaseWithClient;
       setCaseData(caseData);
     } catch (err) {
       console.error('Error loading case:', err);

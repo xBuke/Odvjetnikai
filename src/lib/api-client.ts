@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import { ApiResponse } from '@/lib/validation';
+import type { Client, Case, Document, BillingEntry, Billing } from '@/types/supabase';
 
 // Helper function to get auth token
 async function getAuthToken(): Promise<string> {
@@ -51,14 +52,14 @@ class ApiClient {
     return this.makeRequest<T>(endpoint, { method: 'GET' });
   }
 
-  async post<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, data: unknown): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async put<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+  async put<T>(endpoint: string, data: unknown): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -77,38 +78,38 @@ export const apiClient = new ApiClient('/api');
 
 // Specific API functions for each resource
 export const clientsApi = {
-  getAll: () => apiClient.get('/clients'),
-  create: (data: any) => apiClient.post('/clients', data),
-  update: (id: string, data: any) => apiClient.put('/clients', { id, ...data }),
-  delete: (id: string) => apiClient.delete('/clients', id),
+  getAll: () => apiClient.get<Client[]>('/clients'),
+  create: (data: Omit<Client, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => apiClient.post<Client>('/clients', data),
+  update: (id: string, data: Partial<Omit<Client, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => apiClient.put<Client>('/clients', { id, ...data }),
+  delete: (id: string) => apiClient.delete<Client>('/clients', id),
 };
 
 export const casesApi = {
-  getAll: () => apiClient.get('/cases'),
-  create: (data: any) => apiClient.post('/cases', data),
-  update: (id: string, data: any) => apiClient.put('/cases', { id, ...data }),
-  delete: (id: string) => apiClient.delete('/cases', id),
+  getAll: () => apiClient.get<Case[]>('/cases'),
+  create: (data: Omit<Case, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => apiClient.post<Case>('/cases', data),
+  update: (id: string, data: Partial<Omit<Case, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => apiClient.put<Case>('/cases', { id, ...data }),
+  delete: (id: string) => apiClient.delete<Case>('/cases', id),
 };
 
 export const documentsApi = {
-  getAll: () => apiClient.get('/documents'),
-  create: (data: any) => apiClient.post('/documents', data),
-  update: (id: string, data: any) => apiClient.put('/documents', { id, ...data }),
-  delete: (id: string) => apiClient.delete('/documents', id),
+  getAll: () => apiClient.get<Document[]>('/documents'),
+  create: (data: Omit<Document, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'uploaded_at'>) => apiClient.post<Document>('/documents', data),
+  update: (id: string, data: Partial<Omit<Document, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'uploaded_at'>>) => apiClient.put<Document>('/documents', { id, ...data }),
+  delete: (id: string) => apiClient.delete<Document>('/documents', id),
 };
 
 export const billingApi = {
-  getAll: () => apiClient.get('/billing'),
-  create: (data: any) => apiClient.post('/billing', data),
-  update: (id: string, data: any) => apiClient.put('/billing', { id, ...data }),
-  delete: (id: string) => apiClient.delete('/billing', id),
+  getAll: () => apiClient.get<Billing[]>('/billing'),
+  create: (data: Omit<Billing, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => apiClient.post<Billing>('/billing', data),
+  update: (id: string, data: Partial<Omit<Billing, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => apiClient.put<Billing>('/billing', { id, ...data }),
+  delete: (id: string) => apiClient.delete<Billing>('/billing', id),
 };
 
 export const billingEntriesApi = {
-  getAll: () => apiClient.get('/billing-entries'),
-  create: (data: any) => apiClient.post('/billing-entries', data),
-  update: (id: string, data: any) => apiClient.put('/billing-entries', { id, ...data }),
-  delete: (id: string) => apiClient.delete('/billing-entries', id),
+  getAll: () => apiClient.get<BillingEntry[]>('/billing-entries'),
+  create: (data: Omit<BillingEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => apiClient.post<BillingEntry>('/billing-entries', data),
+  update: (id: string, data: Partial<Omit<BillingEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => apiClient.put<BillingEntry>('/billing-entries', { id, ...data }),
+  delete: (id: string) => apiClient.delete<BillingEntry>('/billing-entries', id),
 };
 
 // Helper function to handle API errors with toast notifications

@@ -27,17 +27,9 @@ import {
   updateWithUserId, 
   deleteWithUserId 
 } from '@/lib/supabaseHelpers';
-import type { Client, Case, BillingEntry, CaseStatus } from '../../../types/supabase';
+import type { Client, Case, BillingEntry } from '@/types/supabase';
 
 // Use generated types from Supabase
-type BillingEntryWithRelations = BillingEntry & {
-  clients?: {
-    name: string;
-  };
-  cases?: {
-    title: string;
-  };
-};
 
 type BillingEntryWithDetails = BillingEntry & {
   clientName: string;

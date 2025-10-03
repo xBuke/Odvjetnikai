@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { UserPreference, UserPreferenceInsert, UserPreferenceUpdate } from '../../types/supabase';
+import type { UserPreference } from '../../types/supabase';
 
 // TypeScript interfaces for user preferences
 export type SortField = string;
@@ -7,7 +7,11 @@ export type SortDirection = 'asc' | 'desc';
 export type PageType = 'cases' | 'clients' | 'documents';
 
 // Re-export types from generated Supabase types
-export type { UserPreference, UserPreferenceInsert, UserPreferenceUpdate };
+export type { UserPreference } from '../../types/supabase';
+
+// Define missing types based on Database interface
+export type UserPreferenceInsert = Omit<UserPreference, 'id' | 'created_at' | 'updated_at'>;
+export type UserPreferenceUpdate = Partial<Omit<UserPreference, 'id' | 'created_at' | 'updated_at'>>;
 
 // Legacy interface for backward compatibility
 export interface UserPreferences extends UserPreference {

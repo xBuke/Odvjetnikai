@@ -20,21 +20,14 @@ import {
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import { FormField, FormInput, FormTextarea, FormActions } from '../../components/ui/Form';
-import { supabase } from '@/lib/supabaseClient';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  selectWithUserIdAndOrder,
-  insertAndReturnWithUserId, 
-  updateWithUserId, 
-  deleteWithUserId 
-} from '@/lib/supabaseHelpers';
 import { clientsApi, handleApiError, handleApiSuccess } from '@/lib/api-client';
 import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
 import TrialBanner from '@/components/billing/TrialBanner';
 import { canCreateEntity } from '@/lib/ui-limit';
-import type { Client } from '../../types/supabase';
+import type { Client } from '@/types/supabase';
 
 // Use generated types from Supabase
 
@@ -102,7 +95,7 @@ export default function ClientsPage() {
 
       // Use the new API client
       const response = await clientsApi.getAll();
-      const data = handleApiSuccess(response, showToast, 'Clients loaded successfully');
+      const data = handleApiSuccess<Client[]>(response, showToast, 'Clients loaded successfully');
       
       // Apply client-side sorting since API doesn't support it yet
       const sortedData = [...data].sort((a, b) => {
@@ -278,7 +271,7 @@ export default function ClientsPage() {
       email: client.email,
       phone: client.phone,
       oib: client.oib,
-      notes: client.notes
+      notes: client.notes || ''
     });
     setIsModalOpen(true);
   };

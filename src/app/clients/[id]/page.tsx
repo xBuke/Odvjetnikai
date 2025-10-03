@@ -19,7 +19,7 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { selectSingleWithUserId } from '@/lib/supabaseHelpers';
-import type { Client, Case, Document } from '../../../types/supabase';
+import type { Client, Case, Document } from '@/types/supabase';
 
 // Use generated types from Supabase
 type CaseWithDetails = Case & {
@@ -30,7 +30,11 @@ type CaseWithDetails = Case & {
 };
 
 type DocumentWithDetails = Document & {
+  status: string;
   statusColor: 'blue' | 'yellow' | 'green' | 'red';
+  size: string;
+  uploadDate: string;
+  title: string;
 };
 
 export default function ClientDetailPage() {
@@ -44,73 +48,120 @@ export default function ClientDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Mock cases data (for now - in a real app, this would come from an API)
-  const mockCases: Case[] = [
+  const mockCases: CaseWithDetails[] = [
     {
       id: 'case-1-uuid-1234-5678-9abc-def012345678',
+      user_id: 'user-123',
+      client_id: 'client-123',
       title: 'Horvat protiv Zagrebačke banke - Spor ugovora',
-      status: 'Active',
+      status: 'In Progress',
+      case_status: 'Priprema',
       statusColor: 'green',
       caseType: 'Spor ugovora',
       lastActivity: '2 sata prije',
-      description: 'Slučaj kršenja ugovora koji uključuje licencni ugovor za softver.'
+      description: 'Slučaj kršenja ugovora koji uključuje licencni ugovor za softver.',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z'
     },
     {
       id: 'case-2-uuid-2345-6789-abcd-ef0123456789',
+      user_id: 'user-123',
+      client_id: 'client-123',
       title: 'Osnivanje tvrtke Horvat d.o.o.',
-      status: 'In Review',
+      status: 'In Progress',
+      case_status: 'Priprema',
       statusColor: 'yellow',
       caseType: 'Osnivanje tvrtke',
       lastActivity: '1 dan prije',
-      description: 'Osnivanje nove d.o.o. za tehnološko savjetovanje.'
+      description: 'Osnivanje nove d.o.o. za tehnološko savjetovanje.',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z'
     },
     {
       id: 'case-3-uuid-3456-789a-bcde-f01234567890',
+      user_id: 'user-123',
+      client_id: 'client-123',
       title: 'Pregled radnog ugovora - Horvat',
-      status: 'Pending',
+      status: 'Open',
+      case_status: 'Zaprimanje',
       statusColor: 'blue',
       caseType: 'Radno pravo',
       lastActivity: '3 dana prije',
-      description: 'Pregled izvršnog radnog ugovora za novog zaposlenika.'
+      description: 'Pregled izvršnog radnog ugovora za novog zaposlenika.',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z'
     }
   ];
 
   // Mock documents data (for now - in a real app, this would come from an API)
-  const mockDocuments: Document[] = [
+  const mockDocuments: DocumentWithDetails[] = [
     {
       id: 'doc-1-uuid-1234-5678-9abc-def012345678',
-      title: 'Ugovor o suradnji - Zagrebačka banka.pdf',
-      type: 'Ugovor',
-      uploadDate: '2024-12-01',
-      size: '2.4 MB',
+      user_id: 'user-123',
+      case_id: 'case-123',
+      name: 'Ugovor o suradnji - Zagrebačka banka.pdf',
+      type: 'ugovor',
+      file_size: 2400000,
+      file_type: 'application/pdf',
+      uploaded_at: '2024-12-01T00:00:00Z',
+      created_at: '2024-12-01T00:00:00Z',
+      updated_at: '2024-12-01T00:00:00Z',
       status: 'Approved',
-      statusColor: 'green'
+      statusColor: 'green',
+      size: '2.4 MB',
+      uploadDate: '2024-12-01',
+      title: 'Ugovor o suradnji - Zagrebačka banka.pdf'
     },
     {
       id: 'doc-2-uuid-2345-6789-abcd-ef0123456789',
-      title: 'Zahtjev za dozvolu za obavljanje djelatnosti.pdf',
-      type: 'Pravni dokument',
-      uploadDate: '2024-11-28',
-      size: '1.8 MB',
+      user_id: 'user-123',
+      case_id: 'case-123',
+      name: 'Zahtjev za dozvolu za obavljanje djelatnosti.pdf',
+      type: 'pravni_dokument',
+      file_size: 1800000,
+      file_type: 'application/pdf',
+      uploaded_at: '2024-11-28T00:00:00Z',
+      created_at: '2024-11-28T00:00:00Z',
+      updated_at: '2024-11-28T00:00:00Z',
       status: 'In Review',
-      statusColor: 'yellow'
+      statusColor: 'yellow',
+      size: '1.8 MB',
+      uploadDate: '2024-11-28',
+      title: 'Zahtjev za dozvolu za obavljanje djelatnosti.pdf'
     },
     {
       id: 'doc-3-uuid-3456-789a-bcde-f01234567890',
-      title: 'Nacrt radnog ugovora.docx',
-      type: 'Nacrt dokumenta',
-      uploadDate: '2024-11-25',
-      size: '856 KB',
+      user_id: 'user-123',
+      case_id: 'case-123',
+      name: 'Nacrt radnog ugovora.docx',
+      type: 'nacrt_dokumenta',
+      file_size: 856000,
+      file_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      uploaded_at: '2024-11-25T00:00:00Z',
+      created_at: '2024-11-25T00:00:00Z',
+      updated_at: '2024-11-25T00:00:00Z',
       status: 'Uploaded',
-      statusColor: 'blue'
+      statusColor: 'blue',
+      size: '856 KB',
+      uploadDate: '2024-11-25',
+      title: 'Nacrt radnog ugovora.docx'
     },
     {
       id: 'doc-4-uuid-4567-89ab-cdef-012345678901',
-      title: 'Financijski izvještaj 2024.xlsx',
-      type: 'Financijski dokument',
-      uploadDate: '2024-11-20',
-      size: '3.2 MB',
+      user_id: 'user-123',
+      case_id: 'case-123',
+      name: 'Financijski izvještaj 2024.xlsx',
+      type: 'financijski_dokument',
+      file_size: 3200000,
+      file_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      uploaded_at: '2024-11-20T00:00:00Z',
+      created_at: '2024-11-20T00:00:00Z',
+      updated_at: '2024-11-20T00:00:00Z',
       status: 'Approved',
-      statusColor: 'green'
+      statusColor: 'green',
+      size: '3.2 MB',
+      uploadDate: '2024-11-20',
+      title: 'Financijski izvještaj 2024.xlsx'
     }
   ];
 
@@ -374,18 +425,22 @@ export default function ClientDetailPage() {
                             const { getSignedUrlViaApi, isDemoMode } = await import('@/lib/documentUrls');
                             const { supabase } = await import('@/lib/supabaseClient');
                             
-                            let downloadUrl: string;
+                            let downloadUrl: string | null = null;
                             
-                            if (isDemoMode()) {
-                              const { data: { publicUrl } } = supabase.storage
-                                .from('documents')
-                                .getPublicUrl(document.file_url);
-                              downloadUrl = publicUrl;
-                            } else {
-                              downloadUrl = await getSignedUrlViaApi(document.file_url);
+                            if (document.file_url) {
+                              if (isDemoMode()) {
+                                const { data: { publicUrl } } = supabase.storage
+                                  .from('documents')
+                                  .getPublicUrl(document.file_url);
+                                downloadUrl = publicUrl;
+                              } else {
+                                downloadUrl = await getSignedUrlViaApi(document.file_url);
+                              }
                             }
                             
-                            window.open(downloadUrl, '_blank');
+                            if (downloadUrl) {
+                              window.open(downloadUrl, '_blank');
+                            }
                           } catch (error) {
                             console.error('Error downloading document:', error);
                           }

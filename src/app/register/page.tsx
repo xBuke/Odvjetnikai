@@ -148,10 +148,10 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                      7-dnevni besplatni trial
+                      Besplatna 7-dnevna proba
                     </h4>
                     <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                      Počnite odmah s 7-dnevnim besplatnim trial-om. Nakon isteka, automatski će se naplatiti €147/mjesec ako se ne otkaže.
+                      Započnite odmah s besplatnom 7-dnevnom probom. Nakon isteka probnog razdoblja, automatski će se naplatiti iznos od 147 € mjesečno, osim ako se pretplata ne otkaže.
                     </p>
                   </div>
                 </div>
@@ -178,7 +178,7 @@ export default function RegisterPage() {
                 ) : (
                   <>
                     <UserPlus className="w-4 h-4 mr-2" />
-                    Registriraj se i počni trial
+                    Registriraj se
                   </>
                 )}
               </button>

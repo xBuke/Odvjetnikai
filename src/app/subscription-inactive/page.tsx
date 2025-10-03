@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { AlertCircle, CreditCard, Mail, Phone } from 'lucide-react';
+import { AlertCircle, CreditCard } from 'lucide-react';
 
 export default function SubscriptionInactivePage() {
   const { user, signOut } = useAuth();
@@ -88,32 +88,6 @@ export default function SubscriptionInactivePage() {
             </button>
           </div>
 
-          {/* Support Section */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">{t('subscription.needHelp')}</h3>
-            <div className="space-y-2">
-              <div className="flex items-center text-sm text-gray-600">
-                <Mail className="h-4 w-4 mr-2" />
-                <a 
-                  href="mailto:support@lawfirmsaas.com" 
-                  className="hover:text-blue-600 transition-colors"
-                >
-                  {t('subscription.supportEmail')}
-                </a>
-              </div>
-              <div className="flex items-center text-sm text-gray-600">
-                <Phone className="h-4 w-4 mr-2" />
-                <span>{t('subscription.supportPhone')}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Additional Information */}
-          <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500">
-              {t('subscription.errorMessage')}
-            </p>
-          </div>
         </div>
       </div>
     </div>

@@ -37,16 +37,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create profile entry with trial settings
+    // Create basic profile entry (trial will be activated by email confirmation trigger)
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert([{
         id: authData.user.id,
         email: authData.user.email,
-        subscription_plan: 'trial',
-        subscription_status: 'trialing',
-        trial_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-        trial_limit: 20,
         role: 'user',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

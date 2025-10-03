@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Potvrdite svoj račun - OdvjetnikAI</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #0A2540;
+            background-color: #F7F7F7;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .header {
+            background: linear-gradient(135deg, #F7F7F7 0%, #ffffff 100%);
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #C9A227 0%, #B8941F 100%);
+            border-radius: 20px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 4px solid #ffffff;
+        }
+        .logo svg {
+            width: 40px;
+            height: 40px;
+            color: #0A2540;
+        }
+        .title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #0A2540;
+            margin: 0 0 8px 0;
+            font-family: Georgia, 'Times New Roman', serif;
+        }
+        .subtitle {
+            font-size: 16px;
+            color: #64748b;
+            margin: 0;
+            font-weight: 500;
+        }
+        .content {
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .welcome-text {
+            font-size: 24px;
+            font-weight: 600;
+            color: #0A2540;
+            margin: 0 0 16px 0;
+        }
+        .description {
+            font-size: 16px;
+            color: #64748b;
+            margin: 0 0 32px 0;
+            line-height: 1.6;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #C9A227 0%, #D4B547 100%);
+            color: #0A2540;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+        .cta-button:hover {
+            background: linear-gradient(135deg, #D4B547 0%, #B8941F 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .trial-info {
+            background: linear-gradient(135deg, #F7F7F7 0%, #ffffff 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 32px 0;
+            text-align: left;
+        }
+        .trial-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .trial-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #C9A227 0%, #B8941F 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .trial-icon svg {
+            width: 20px;
+            height: 20px;
+            color: #0A2540;
+        }
+        .trial-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0A2540;
+            margin: 0;
+        }
+        .trial-description {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.6;
+            margin: 0;
+        }
+        .footer {
+            background-color: #F7F7F7;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer-text {
+            font-size: 14px;
+            color: #64748b;
+            margin: 0 0 16px 0;
+        }
+        .footer-links {
+            margin: 16px 0 0 0;
+        }
+        .footer-links a {
+            color: #C9A227;
+            text-decoration: none;
+            margin: 0 16px;
+            font-size: 14px;
+        }
+        .footer-links a:hover {
+            color: #B8941F;
+            text-decoration: underline;
+        }
+        .divider {
+            height: 1px;
+            background-color: #e2e8f0;
+            margin: 24px 0;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            .header, .content, .footer {
+                padding: 30px 20px;
+            }
+            .title {
+                font-size: 28px;
+            }
+            .welcome-text {
+                font-size: 20px;
+            }
+            .cta-button {
+                padding: 14px 28px;
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+            </div>
+            <h1 class="title">OdvjetnikAI</h1>
+            <p class="subtitle">Profesionalna pravna platforma</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <h2 class="welcome-text">Dobrodošli u OdvjetnikAI!</h2>
+            <p class="description">
+                Kliknite gumb ispod da potvrdite svoj račun i započnete besplatni probni period.
+            </p>
+
+            <a href="{{ .ConfirmationURL }}" class="cta-button">
+                Potvrdi račun
+            </a>
+
+            <div class="trial-info">
+                <div class="trial-header">
+                    <div class="trial-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <h3 class="trial-title">Besplatna 7-dnevna proba</h3>
+                </div>
+                <p class="trial-description">
+                    Započnite odmah s potpuno besplatnom 7-dnevnom probom. Nema skrivenih troškova, nema potrebe za karticom. 
+                    Nakon isteka probnog razdoblja, možete odabrati plan koji vam odgovara.
+                </p>
+            </div>
+
+            <div class="divider"></div>
+
+            <p style="font-size: 14px; color: #64748b; margin: 0;">
+                Ako gumb ne radi, kopirajte i zalijepite sljedeći link u svoj preglednik:<br>
+                <a href="{{ .ConfirmationURL }}" style="color: #C9A227; word-break: break-all;">{{ .ConfirmationURL }}</a>
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p class="footer-text">
+                Ako niste kreirali račun na OdvjetnikAI, možete sigurno zanemariti ovu poruku.
+            </p>
+            <div class="footer-links">
+                <a href="{{ .SiteURL }}/terms">Uvjeti korištenja</a>
+                <a href="{{ .SiteURL }}/privacy">Politika privatnosti</a>
+                <a href="{{ .SiteURL }}/contact">Kontakt</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Scale, Mail, Lock, Eye, EyeOff, UserPlus, CreditCard } from 'lucide-react';
+import Modal from '@/components/ui/Modal';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -12,6 +13,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   const { signUp } = useAuth();
   const router = useRouter();
@@ -43,9 +45,8 @@ export default function RegisterPage() {
       if (error) {
         setError(error.message);
       } else {
-        // User registered successfully, they will get 7-day trial automatically
-        // Redirect to dashboard after successful registration
-        router.push('/?message=trial_started');
+        // User registered successfully, show confirmation popup
+        setSignupSuccess(true);
       }
     } catch {
       setError(t('auth.unexpectedError'));
@@ -220,6 +221,34 @@ export default function RegisterPage() {
           </div>
         </div>
       </div>
+
+      {/* Email Confirmation Modal */}
+      <Modal
+        isOpen={signupSuccess}
+        onClose={() => setSignupSuccess(false)}
+        title="Potvrda registracije"
+        size="sm"
+      >
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
+            <Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
+          </div>
+          <div>
+            <p className="text-foreground font-medium mb-2">
+              Molimo potvrdite svoju e-mail adresu.
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Poslali smo vam potvrdu na <span className="font-medium text-foreground">{email}</span>.
+            </p>
+          </div>
+          <button
+            onClick={() => setSignupSuccess(false)}
+            className="w-full py-3 px-6 bg-gradient-to-r from-gold to-gold-light hover:from-gold-light hover:to-gold-dark text-navy font-semibold rounded-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Zatvori
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

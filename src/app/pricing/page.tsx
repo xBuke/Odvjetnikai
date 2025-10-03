@@ -266,18 +266,6 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Contact Section */}
-        <div className="mt-16 text-center">
-          <p className="text-gray-600 mb-4">
-            Need help choosing a plan or have questions?
-          </p>
-          <a
-            href="mailto:support@lawfirmsaas.com"
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Contact our support team
-          </a>
-        </div>
       </div>
     </div>
   );

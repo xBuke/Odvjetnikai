@@ -14,7 +14,7 @@ export default function RouteProtection({ children }: RouteProtectionProps) {
   const pathname = usePathname();
 
   // Public routes that don't require authentication
-  const publicRoutes = useMemo(() => ['/login', '/register', '/pricing', '/subscription-inactive'], []);
+  const publicRoutes = useMemo(() => ['/login', '/register', '/pricing', '/subscription-inactive', '/auth/confirm'], []);
   const isPublicRoute = publicRoutes.includes(pathname);
 
   useEffect(() => {

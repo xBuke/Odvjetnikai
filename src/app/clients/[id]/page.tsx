@@ -1,0 +1,467 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { 
+  ArrowLeft, 
+  User, 
+  Mail, 
+  Phone, 
+  FileText, 
+  Download,
+  Eye,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  XCircle,
+  Loader2
+} from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { selectSingleWithUserId } from '@/lib/supabaseHelpers';
+import type { Client, Case, Document } from '@/types/supabase';
+
+// Use generated types from Supabase
+type CaseWithDetails = Case & {
+  statusColor: 'green' | 'yellow' | 'blue' | 'gray';
+  caseType: string;
+  lastActivity: string;
+  description: string;
+};
+
+type DocumentWithDetails = Document & {
+  status: string;
+  statusColor: 'blue' | 'yellow' | 'green' | 'red';
+  size: string;
+  uploadDate: string;
+  title: string;
+};
+
+export default function ClientDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const clientId = params.id as string;
+  const { } = useAuth();
+
+  const [client, setClient] = useState<Client | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Mock cases data (for now - in a real app, this would come from an API)
+  const mockCases: CaseWithDetails[] = [
+    {
+      id: 'case-1-uuid-1234-5678-9abc-def012345678',
+      user_id: 'user-123',
+      client_id: 'client-123',
+      title: 'Horvat protiv Zagrebačke banke - Spor ugovora',
+      status: 'In Progress',
+      case_status: 'Priprema',
+      statusColor: 'green',
+      caseType: 'Spor ugovora',
+      lastActivity: '2 sata prije',
+      description: 'Slučaj kršenja ugovora koji uključuje licencni ugovor za softver.',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z'
+    },
+    {
+      id: 'case-2-uuid-2345-6789-abcd-ef0123456789',
+      user_id: 'user-123',
+      client_id: 'client-123',
+      title: 'Osnivanje tvrtke Horvat d.o.o.',
+      status: 'In Progress',
+      case_status: 'Priprema',
+      statusColor: 'yellow',
+      caseType: 'Osnivanje tvrtke',
+      lastActivity: '1 dan prije',
+      description: 'Osnivanje nove d.o.o. za tehnološko savjetovanje.',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z'
+    },
+    {
+      id: 'case-3-uuid-3456-789a-bcde-f01234567890',
+      user_id: 'user-123',
+      client_id: 'client-123',
+      title: 'Pregled radnog ugovora - Horvat',
+      status: 'Open',
+      case_status: 'Zaprimanje',
+      statusColor: 'blue',
+      caseType: 'Radno pravo',
+      lastActivity: '3 dana prije',
+      description: 'Pregled izvršnog radnog ugovora za novog zaposlenika.',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z'
+    }
+  ];
+
+  // Mock documents data (for now - in a real app, this would come from an API)
+  const mockDocuments: DocumentWithDetails[] = [
+    {
+      id: 'doc-1-uuid-1234-5678-9abc-def012345678',
+      user_id: 'user-123',
+      case_id: 'case-123',
+      name: 'Ugovor o suradnji - Zagrebačka banka.pdf',
+      type: 'ugovor',
+      file_size: 2400000,
+      file_type: 'application/pdf',
+      uploaded_at: '2024-12-01T00:00:00Z',
+      created_at: '2024-12-01T00:00:00Z',
+      updated_at: '2024-12-01T00:00:00Z',
+      status: 'Approved',
+      statusColor: 'green',
+      size: '2.4 MB',
+      uploadDate: '2024-12-01',
+      title: 'Ugovor o suradnji - Zagrebačka banka.pdf'
+    },
+    {
+      id: 'doc-2-uuid-2345-6789-abcd-ef0123456789',
+      user_id: 'user-123',
+      case_id: 'case-123',
+      name: 'Zahtjev za dozvolu za obavljanje djelatnosti.pdf',
+      type: 'pravni_dokument',
+      file_size: 1800000,
+      file_type: 'application/pdf',
+      uploaded_at: '2024-11-28T00:00:00Z',
+      created_at: '2024-11-28T00:00:00Z',
+      updated_at: '2024-11-28T00:00:00Z',
+      status: 'In Review',
+      statusColor: 'yellow',
+      size: '1.8 MB',
+      uploadDate: '2024-11-28',
+      title: 'Zahtjev za dozvolu za obavljanje djelatnosti.pdf'
+    },
+    {
+      id: 'doc-3-uuid-3456-789a-bcde-f01234567890',
+      user_id: 'user-123',
+      case_id: 'case-123',
+      name: 'Nacrt radnog ugovora.docx',
+      type: 'nacrt_dokumenta',
+      file_size: 856000,
+      file_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      uploaded_at: '2024-11-25T00:00:00Z',
+      created_at: '2024-11-25T00:00:00Z',
+      updated_at: '2024-11-25T00:00:00Z',
+      status: 'Uploaded',
+      statusColor: 'blue',
+      size: '856 KB',
+      uploadDate: '2024-11-25',
+      title: 'Nacrt radnog ugovora.docx'
+    },
+    {
+      id: 'doc-4-uuid-4567-89ab-cdef-012345678901',
+      user_id: 'user-123',
+      case_id: 'case-123',
+      name: 'Financijski izvještaj 2024.xlsx',
+      type: 'financijski_dokument',
+      file_size: 3200000,
+      file_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      uploaded_at: '2024-11-20T00:00:00Z',
+      created_at: '2024-11-20T00:00:00Z',
+      updated_at: '2024-11-20T00:00:00Z',
+      status: 'Approved',
+      statusColor: 'green',
+      size: '3.2 MB',
+      uploadDate: '2024-11-20',
+      title: 'Financijski izvještaj 2024.xlsx'
+    }
+  ];
+
+
+  // Load client data from Supabase
+  const loadClientData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch client data from Supabase
+      const data = await selectSingleWithUserId(supabase, 'clients', 'id', clientId) as unknown as Client;
+      setClient(data);
+    } catch (err) {
+      console.error('Error loading client:', err);
+      setError('Greška pri dohvaćanju klijenata');
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    loadClientData();
+  }, [loadClientData]);
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Active':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'In Review':
+        return <Clock className="w-4 h-4 text-yellow-500" />;
+      case 'Pending':
+        return <AlertCircle className="w-4 h-4 text-blue-500" />;
+      case 'Closed':
+        return <XCircle className="w-4 h-4 text-gray-500" />;
+      default:
+        return <AlertCircle className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const getDocumentStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Approved':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'In Review':
+        return <Clock className="w-4 h-4 text-yellow-500" />;
+      case 'Uploaded':
+        return <FileText className="w-4 h-4 text-blue-500" />;
+      case 'Rejected':
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      default:
+        return <FileText className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-muted-foreground mx-auto mb-4 animate-spin" />
+          <p className="text-muted-foreground">Učitavanje detalja klijenta...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <div className="flex items-center space-x-4 mb-4">
+            <button
+              onClick={() => router.push('/clients')}
+              className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Natrag na klijente</span>
+            </button>
+          </div>
+          <div className="text-center py-12">
+            <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+            <div>{error}</div>
+            {error === 'Greška pri učitavanju klijenta' && (
+              <button
+                onClick={loadClientData}
+                className="mt-4 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors duration-200"
+              >
+                Pokušaj ponovno
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Back Button */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <div className="flex items-center space-x-4 mb-4">
+          <button
+            onClick={() => router.push('/clients')}
+            className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Natrag na klijente</span>
+          </button>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+            <User className="w-8 h-8 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{client?.name}</h1>
+            <p className="text-muted-foreground">Detalji klijenta</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Client Information */}
+      <div className="bg-card rounded-lg shadow-sm border border-border">
+        <div className="p-6 border-b border-border">
+          <h2 className="text-lg font-semibold text-foreground">Informacije o klijentu</h2>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <User className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Ime</p>
+                  <p className="text-foreground">{client?.name}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Mail className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">E-pošta</p>
+                  <p className="text-foreground">{client?.email}</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <Phone className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Telefon</p>
+                  <p className="text-foreground">{client?.phone}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <FileText className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">OIB</p>
+                  <p className="text-foreground">{client?.oib}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          {client?.notes && (
+            <div className="mt-6 pt-6 border-t border-border">
+              <div className="flex items-start space-x-3">
+                <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Bilješke</p>
+                  <p className="text-foreground">{client?.notes}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Linked Cases */}
+      <div className="bg-card rounded-lg shadow-sm border border-border">
+        <div className="p-6 border-b border-border">
+          <h2 className="text-lg font-semibold text-foreground">Povezani predmeti</h2>
+        </div>
+        <div className="p-6">
+          {mockCases.length > 0 ? (
+            <div className="space-y-4">
+              {mockCases.map((caseItem) => (
+                <div key={caseItem.id} className="flex items-start space-x-4 p-4 border border-border rounded-lg hover:bg-accent transition-colors duration-200">
+                  <div className="flex-shrink-0 mt-1">
+                    {getStatusIcon(caseItem.status)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium text-foreground">{caseItem.title}</h4>
+                    <p className="text-sm text-muted-foreground mt-1">{caseItem.description}</p>
+                    <div className="flex items-center space-x-2 mt-2">
+                      <span className="text-xs text-muted-foreground">{caseItem.caseType}</span>
+                      <span className="text-xs text-muted-foreground">•</span>
+                      <span className="text-xs text-muted-foreground">Last activity: {caseItem.lastActivity}</span>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      caseItem.statusColor === 'green' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                      caseItem.statusColor === 'yellow' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                      caseItem.statusColor === 'blue' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {caseItem.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Nema predmeta povezanih s ovim klijentom.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Linked Documents */}
+      <div className="bg-card rounded-lg shadow-sm border border-border">
+        <div className="p-6 border-b border-border">
+          <h2 className="text-lg font-semibold text-foreground">Povezani dokumenti</h2>
+        </div>
+        <div className="p-6">
+          {mockDocuments.length > 0 ? (
+            <div className="space-y-4">
+              {mockDocuments.map((document) => (
+                <div key={document.id} className="flex items-center space-x-4 p-4 border border-border rounded-lg hover:bg-accent transition-colors duration-200">
+                  <div className="flex-shrink-0">
+                    {getDocumentStatusIcon(document.status)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium text-foreground truncate">{document.title}</h4>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className="text-xs text-muted-foreground">{document.type}</span>
+                      <span className="text-xs text-muted-foreground">•</span>
+                      <span className="text-xs text-muted-foreground">{document.size}</span>
+                      <span className="text-xs text-muted-foreground">•</span>
+                      <span className="text-xs text-muted-foreground">Uploaded: {document.uploadDate}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      document.statusColor === 'green' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                      document.statusColor === 'yellow' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                      document.statusColor === 'blue' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                      'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                    }`}>
+                      {document.status}
+                    </span>
+                    <div className="flex items-center space-x-1">
+                      <button className="p-1 text-muted-foreground hover:text-foreground transition-colors duration-200" title="View document">
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button 
+                        className="p-1 text-muted-foreground hover:text-foreground transition-colors duration-200" 
+                        title="Download document"
+                        onClick={async () => {
+                          try {
+                            const { getSignedUrlViaApi, isDemoMode } = await import('@/lib/documentUrls');
+                            const { supabase } = await import('@/lib/supabaseClient');
+                            
+                            let downloadUrl: string | null = null;
+                            
+                            if (document.file_url) {
+                              if (isDemoMode()) {
+                                const { data: { publicUrl } } = supabase.storage
+                                  .from('documents')
+                                  .getPublicUrl(document.file_url);
+                                downloadUrl = publicUrl;
+                              } else {
+                                downloadUrl = await getSignedUrlViaApi(document.file_url);
+                              }
+                            }
+                            
+                            if (downloadUrl) {
+                              window.open(downloadUrl, '_blank');
+                            }
+                          } catch (error) {
+                            console.error('Error downloading document:', error);
+                          }
+                        }}
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Nema dokumenata povezanih s ovim klijentom.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+

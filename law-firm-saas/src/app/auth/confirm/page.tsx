@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { Scale, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 export default function AuthConfirmPage() {

@@ -1,156 +1,143 @@
-# Trial Implementation Summary
+# Trial Auto-Billing Implementation Summary
 
-## Overview
-This document summarizes the implementation of the 7-day Trial subscription with entity limits for the Odvjetnikai law firm SaaS application.
+## ✅ Implementirane funkcionalnosti
 
-## ✅ Completed Features
+### 1. **Direktna registracija s trial-om**
+- Modificirana `/login` stranica da omogući direktnu registraciju
+- Korisnici se mogu registrirati bez prethodnog odabira plana
+- Automatski dobivaju 7-dnevni trial nakon registracije
 
-### 1. **Helper Libraries**
-- **`src/lib/subscription.ts`** - Profile interface and utility functions
-  - `isTrial()`, `isTrialExpired()`, `daysLeft()`, `trialLimit()`
-  - `formatDbErrorToUserMessage()` for Croatian error messages
-- **`src/lib/ui-limit.ts`** - Entity creation limit checking
-  - `canCreateEntity(profile, currentCount)` function
+### 2. **Trial sustav**
+- Novi korisnici automatski dobivaju `subscription_status = 'trial'`
+- Trial traje 7 dana (`trial_expires_at`)
+- Trial limit: 20 stavki po kategoriji
+- TrialBanner komponenta prikazuje status trial-a
 
-### 2. **Trial Banner Component**
-- **`src/components/billing/TrialBanner.tsx`**
-  - Shows for users with `subscription_status === "trial"`
-  - Displays days left and 20-entity limit for active trials
-  - Shows expiration message for expired trials
-  - Always includes CTA button linking to `/pricing`
-  - Styled with Tailwind (amber for active, red for expired)
+### 3. **Automatsko naplaćivanje**
+- API endpoint `/api/trial/auto-billing` za provjeru isteka trial-a
+- Automatski kreira Stripe subscription nakon isteka trial-a
+- Cron job script za redovitu provjeru (svaki sat)
 
-### 3. **Dashboard Pages Updated**
-All three dashboard pages (`cases`, `clients`, `documents`) now include:
-- TrialBanner component at the top
-- Entity counters showing `(X/20 iskorišteno tijekom triala)` for trial users
-- Trial limit checks before entity creation
-- Croatian error messages when limits are reached
+### 4. **Stripe integracija**
+- Kreiranje Stripe customer-a pri registraciji
+- Subscription s trial period-om
+- Webhook handling za subscription events
 
-### 4. **Entity Creation Guards**
-- Frontend protection using `canCreateEntity(profile, currentCount)`
-- Croatian toast messages:
-  - `"Trial je istekao. Nadogradi plan za nastavak."`
-  - `"Dosegnut je trial limit (20). Nadogradi plan za nastavak."`
-- Prevents API calls when blocked
+## 📁 Novi fajlovi
 
-### 5. **API Routes**
-New API routes created:
-- **`/api/clients/route.ts`** - POST/GET for client management
-- **`/api/cases/route.ts`** - POST/GET for case management  
-- **`/api/documents/route.ts`** - POST/GET for document management
+### API Endpoints
+- `src/app/api/trial/auto-billing/route.ts` - Automatsko naplaćivanje
+- `src/app/api/trial/create-subscription/route.ts` - Kreiranje trial subscription-a
 
-Features:
-- Handle trial limit/expired errors with 409 Conflict status
-- Return 500 for generic errors
-- Proper authentication and error handling
+### Komponente
+- `src/components/trial/TrialBanner.tsx` - Prikaz trial statusa
 
-### 6. **Database Schema Updates**
-- **`20250112_add_trial_fields_to_profiles.sql`**
-  - Adds `trial_expires_at` and `trial_limit` columns to profiles table
-  - Creates trial management functions
-- **`20250112_update_rls_for_trial_users.sql`**
-  - Updates RLS policies to allow trial users
-  - Adds triggers to enforce trial limits on insert
+### Scripts
+- `scripts/check-expired-trials.js` - Cron job script
+- `scripts/test-trial-flow.js` - Test script
 
-### 7. **AuthContext Enhanced**
-- Added `profile` state with full profile data
-- Added `refreshProfile()` function
-- Fetches trial-related fields from database
-- Provides fallback profile data if database profile doesn't exist
+### Migracije
+- `supabase/migrations/20250115_add_auto_trial_subscription.sql` - Database migracija
 
-## 🎯 Key Features
+### Dokumentacija
+- `TRIAL_AUTO_BILLING_SETUP.md` - Detaljni setup vodič
+- `TRIAL_IMPLEMENTATION_SUMMARY.md` - Ovaj sažetak
 
-1. **7-day Trial Support** - Users can have `subscription_status = 'trial'` with expiration tracking
-2. **20 Entity Limit** - Trial users limited to 20 total entities (clients + cases + documents)
-3. **Frontend Guards** - UI prevents creation when limits reached
-4. **Backend Enforcement** - Database triggers and RLS policies enforce limits
-5. **Croatian Messages** - All user-facing text in Croatian as requested
-6. **Trial Banner** - Prominent display of trial status and days remaining
-7. **Entity Counters** - Shows usage against trial limits
-8. **Error Handling** - Proper 409/500 status codes for different error types
+## 🔧 Modificirani fajlovi
 
-## 🚀 Usage
+### Frontend
+- `src/app/login/page.tsx` - Dodana direktna registracija
+- `src/app/page.tsx` - Dodan TrialBanner i trial poruke
 
-### Starting a Trial
+## 🚀 Kako pokrenuti
+
+### 1. Environment Variables
+```env
+CRON_SECRET=your_secure_random_string
+NEXT_PUBLIC_STRIPE_PRICE_BASIC=price_your_basic_price_id
+NEXT_PUBLIC_STRIPE_PRICE_PRO=price_your_pro_price_id
+NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE=price_your_enterprise_price_id
+```
+
+### 2. Database Migration
 ```sql
--- Set user to trial status
-SELECT start_trial_for_user('user-uuid-here');
+-- Pokrenite u Supabase SQL Editor:
+-- supabase/migrations/20250115_add_auto_trial_subscription.sql
 ```
 
-### Checking Trial Status
-```typescript
-import { isTrial, isTrialExpired, daysLeft } from '@/lib/subscription';
+### 3. Stripe Setup
+- Kreirajte produkte u Stripe Dashboard
+- Postavite webhook endpoint
+- Dodajte price ID-ove u environment variables
 
-if (isTrial(profile)) {
-  if (isTrialExpired(profile)) {
-    // Trial expired
-  } else {
-    const days = daysLeft(profile);
-    // Show days remaining
-  }
+### 4. Cron Job
+```bash
+# Vercel (preporučeno)
+# Dodajte u vercel.json:
+{
+  "crons": [
+    {
+      "path": "/api/trial/auto-billing",
+      "schedule": "0 * * * *"
+    }
+  ]
 }
+
+# Ili external cron service
+# URL: https://yourdomain.com/api/trial/auto-billing
+# Method: POST
+# Headers: Authorization: Bearer your_cron_secret
+# Schedule: 0 * * * * (svaki sat)
 ```
 
-### Checking Entity Limits
-```typescript
-import { canCreateEntity } from '@/lib/ui-limit';
+## 🧪 Testiranje
 
-const limitCheck = canCreateEntity(profile, currentCount);
-if (!limitCheck.ok) {
-  showToast(limitCheck.reason, 'error');
-  return;
-}
+### 1. Test registracije
+1. Idite na `/login?tab=register`
+2. Registrirajte se s novim email-om
+3. Provjerite da li se prikazuje TrialBanner
+4. Provjerite da li je `subscription_status = 'trial'`
+
+### 2. Test automatskog naplaćivanja
+```bash
+# Pokrenite test script
+node scripts/test-trial-flow.js
+
+# Ili ručno pozovite API
+curl -X POST https://yourdomain.com/api/trial/auto-billing \
+  -H "Authorization: Bearer your_cron_secret"
 ```
 
-## 📋 Migration Order
+## 📊 Flow dijagram
 
-Run these migrations in order:
-1. `database-setup.sql`
-2. `add-document-type-enum.sql`
-3. `add-user-id-to-cases.sql`
-4. `add-updated-at-triggers.sql`
-5. `supabase/migrations/20250103_add_documents_bucket.sql`
-6. `supabase/migrations/20250112_add_trial_fields_to_profiles.sql`
-7. `supabase/migrations/20250112_update_rls_for_trial_users.sql`
+```
+1. Korisnik se registrira
+   ↓
+2. handle_new_user() kreira profil s trial statusom
+   ↓
+3. TrialBanner prikazuje status
+   ↓
+4. Nakon 7 dana, cron job poziva /api/trial/auto-billing
+   ↓
+5. API kreira Stripe subscription
+   ↓
+6. Webhook ažurira profil na 'active'
+   ↓
+7. Korisnik ima aktivnu pretplatu
+```
 
-## 🔧 Configuration
+## ⚠️ Važne napomene
 
-### Environment Variables Required
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+1. **CRON_SECRET**: Koristite jaku, nasumičnu vrijednost
+2. **Stripe webhooks**: Uvijek verificirajte signature
+3. **Error handling**: Implementirano je osnovno error handling
+4. **Monitoring**: Preporučujemo dodavanje logova i alerts-a
+5. **Backup plan**: Razmislite o manual intervention opciji
 
-### Database Functions Available
-- `start_trial_for_user(user_id)`
-- `is_user_on_trial(user_id)`
-- `is_trial_expired(user_id)`
-- `get_trial_days_left(user_id)`
-- `check_trial_entity_limit(user_id, entity_type, current_count)`
+## 🔄 Sljedeći koraci
 
-## 🎨 UI Components
-
-### TrialBanner
-- Automatically shows for trial users
-- Displays trial status and days remaining
-- Includes upgrade CTA button
-- Responsive design with proper styling
-
-### Entity Counters
-- Shows current usage vs trial limit
-- Only visible for trial users
-- Format: `(X/20 iskorišteno tijekom triala)`
-
-## 🛡️ Security
-
-- RLS policies updated to allow trial users
-- Database triggers enforce limits at insert time
-- Frontend and backend validation
-- Proper error handling and user feedback
-
-## 📱 User Experience
-
-- Clear trial status indication
-- Helpful error messages in Croatian
-- Smooth upgrade flow to pricing page
-- Non-intrusive but visible trial information
+1. **Email notifications**: Pošaljite email korisnicima o isteku trial-a
+2. **Grace period**: Dodajte kratko razdoblje nakon isteka
+3. **Analytics**: Dodajte tracking za trial conversion rate
+4. **A/B testing**: Testirajte različite trial periode
+5. **Customer support**: Dodajte chat/email support za trial korisnike

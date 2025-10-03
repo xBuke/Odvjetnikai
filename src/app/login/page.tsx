@@ -14,7 +14,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { signIn, checkSubscriptionStatus } = useAuth();
+  const { signIn, signUp, checkSubscriptionStatus } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -70,8 +70,32 @@ export default function AuthPage() {
     }
   };
 
-  const handleRegisterRedirect = () => {
-    router.push('/pricing');
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!email || !password) {
+      setError(t('auth.fillInAllFields'));
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error } = await signUp(email, password);
+      
+      if (error) {
+        setError(error.message);
+      } else {
+        // User registered successfully, they will get 7-day trial automatically
+        // Redirect to dashboard after successful registration
+        router.push('/?message=trial_started');
+      }
+    } catch {
+      setError(t('auth.unexpectedError'));
+    } finally {
+      setLoading(false);
+    }
   };
 
 
@@ -210,32 +234,112 @@ export default function AuthPage() {
                 </button>
               </form>
             ) : (
-              /* Register Tab */
-              <div className="space-y-6 text-center">
-                <div className="space-y-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-gold to-gold-dark rounded-full flex items-center justify-center mx-auto">
-                    <CreditCard className="w-8 h-8 text-navy" />
+              /* Register Form */
+              <form className="space-y-6" onSubmit={handleRegisterSubmit}>
+                {/* Email Field */}
+                <div>
+                  <label htmlFor="register-email" className="block text-sm font-medium text-foreground mb-2">
+                    {t('auth.emailAddress')}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Mail className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <input
+                      id="register-email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent transition-all duration-200"
+                      placeholder={t('auth.enterEmail')}
+                    />
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground">
-                    Otvorite svoj račun
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Za otvaranje računa potrebno je odabrati pretplatu.
-                  </p>
                 </div>
 
+                {/* Password Field */}
+                <div>
+                  <label htmlFor="register-password" className="block text-sm font-medium text-foreground mb-2">
+                    {t('auth.password')}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <input
+                      id="register-password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="block w-full pl-10 pr-12 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent transition-all duration-200"
+                      placeholder={t('auth.enterPassword')}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-slate-100 dark:hover:bg-slate-600 rounded-r-xl transition-colors"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+                      ) : (
+                        <Eye className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Trial Info */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                  <div className="flex items-start">
+                    <div className="w-8 h-8 bg-gradient-to-br from-gold to-gold-dark rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                      <CreditCard className="w-4 h-4 text-navy" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                        7-dnevni besplatni trial
+                      </h4>
+                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                        Počnite odmah s 7-dnevnim besplatnim trial-om. Nakon isteka, automatski će se naplatiti €147/mjesec ako se ne otkaže.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Error Message */}
+                {error && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                    <p className="text-sm text-red-600 dark:text-red-400 font-medium">{error}</p>
+                  </div>
+                )}
+
+                {/* Submit Button */}
                 <button
-                  onClick={handleRegisterRedirect}
-                  className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-navy bg-gradient-to-r from-gold to-gold-light hover:from-gold-light hover:to-gold-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gold transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-navy bg-gradient-to-r from-gold to-gold-light hover:from-gold-light hover:to-gold-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Odaberi plan
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-navy mr-2"></div>
+                      Kreiranje računa...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Registriraj se i počni trial
+                    </>
+                  )}
                 </button>
 
-                <p className="text-xs text-muted-foreground">
-                  Nakon uspješne pretplate, račun će biti automatski kreiran i moći ćete se prijaviti.
+                <p className="text-xs text-muted-foreground text-center">
+                  Registracijom se slažete s našim uvjetima korištenja i politikom privatnosti.
                 </p>
-              </div>
+              </form>
             )}
           </div>
         </div>

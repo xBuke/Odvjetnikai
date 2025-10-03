@@ -13,7 +13,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import TrialBanner from '@/components/billing/TrialBanner';
+import TrialBanner from '@/components/trial/TrialBanner';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Dashboard() {
@@ -21,14 +21,27 @@ export default function Dashboard() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const { profile } = useAuth();
 
-  // Check for successful checkout session
+  // Check for successful checkout session or trial start
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
+    const trialMessage = searchParams.get('message');
+    
     if (sessionId) {
       setShowSuccessMessage(true);
       // Remove the session_id from URL after showing success message
       const url = new URL(window.location.href);
       url.searchParams.delete('session_id');
+      window.history.replaceState({}, '', url.toString());
+      
+      // Hide success message after 5 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 5000);
+    } else if (trialMessage === 'trial_started') {
+      setShowSuccessMessage(true);
+      // Remove the message from URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('message');
       window.history.replaceState({}, '', url.toString());
       
       // Hide success message after 5 seconds
@@ -233,10 +246,16 @@ export default function Dashboard() {
             <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
             <div>
               <h3 className="text-sm font-medium text-green-800">
-                Subscription Activated Successfully!
+                {searchParams.get('message') === 'trial_started' 
+                  ? 'Trial uspješno pokrenut!' 
+                  : 'Subscription Activated Successfully!'
+                }
               </h3>
               <p className="text-sm text-green-700 mt-1">
-                Welcome to Law Firm SaaS! Your subscription is now active and you have access to all features.
+                {searchParams.get('message') === 'trial_started'
+                  ? 'Dobrodošli! Vaš 7-dnevni besplatni trial je aktiviran. Možete koristiti sve funkcionalnosti aplikacije.'
+                  : 'Welcome to Law Firm SaaS! Your subscription is now active and you have access to all features.'
+                }
               </p>
             </div>
           </div>
@@ -244,7 +263,7 @@ export default function Dashboard() {
       )}
 
       {/* Trial Banner */}
-      {profile && <TrialBanner profile={profile} />}
+      <TrialBanner />
 
       {/* Welcome Section */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 lg:p-6">

@@ -826,10 +826,10 @@ export default function DocumentsPage() {
                   id="file"
                   onChange={handleFileSelect}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-input text-foreground"
-                  accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp"
+                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Dozvoljeni tipovi: PDF, slike (JPG, PNG, GIF, WebP), tekstualne datoteke (TXT, CSV), Microsoft Office dokumenti (DOC, DOCX, XLS, XLSX, PPT, PPTX). Maksimalna veličina: 50MB.
+                  Dozvoljeni tipovi: PDF, DOC, DOCX, JPG, PNG. Maksimalna veličina: 50MB.
                 </p>
                 {selectedFile && (
                   <div className="mt-2 p-2 bg-muted rounded-lg">

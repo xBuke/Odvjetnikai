@@ -6,16 +6,8 @@ export const ALLOWED_MIME_TYPES = [
   'image/jpeg',
   'image/jpg', 
   'image/png',
-  'image/gif',
-  'image/webp',
-  'text/plain',
-  'text/csv',
   'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ] as const;
 
 // Maximum file size (50MB)
@@ -27,16 +19,8 @@ export const ALLOWED_EXTENSIONS = [
   '.jpg',
   '.jpeg', 
   '.png',
-  '.gif',
-  '.webp',
-  '.txt',
-  '.csv',
   '.doc',
-  '.docx',
-  '.xls',
-  '.xlsx',
-  '.ppt',
-  '.pptx'
+  '.docx'
 ] as const;
 
 export interface FileValidationResult {
@@ -120,7 +104,7 @@ export function getFileValidationErrorMessage(error: string): string {
     return 'Datoteka je prevelika. Maksimalna veličina je 50MB.';
   }
   if (error.includes('File type') || error.includes('File extension')) {
-    return 'Tip datoteke nije podržan. Dozvoljeni tipovi: PDF, slike (JPG, PNG, GIF, WebP), tekstualne datoteke (TXT, CSV), Microsoft Office dokumenti (DOC, DOCX, XLS, XLSX, PPT, PPTX).';
+    return 'Tip datoteke nije podržan. Dozvoljeni tipovi: PDF, DOC, DOCX, JPG, PNG.';
   }
   if (error.includes('Invalid document type')) {
     return 'Neispravan tip dokumenta. Molimo odaberite valjan tip dokumenta.';

@@ -19,16 +19,8 @@ VALUES (
     'image/jpeg',
     'image/jpg', 
     'image/png',
-    'image/gif',
-    'image/webp',
-    'text/plain',
-    'text/csv',
     'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ]
 )
 ON CONFLICT (id) DO NOTHING;

@@ -16,7 +16,12 @@ CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON user_preferences(user
 -- Enable Row Level Security
 ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
 
--- Create policies for user_preferences
+-- Create policies for user_preferences (drop existing first for idempotency)
+DROP POLICY IF EXISTS "Users can view their own preferences" ON user_preferences;
+DROP POLICY IF EXISTS "Users can insert their own preferences" ON user_preferences;
+DROP POLICY IF EXISTS "Users can update their own preferences" ON user_preferences;
+DROP POLICY IF EXISTS "Users can delete their own preferences" ON user_preferences;
+
 CREATE POLICY "Users can view their own preferences" ON user_preferences
     FOR SELECT USING (auth.uid() = user_id);
 
@@ -36,9 +41,11 @@ BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ language 'plpgsql'
+SET search_path = public;
 
--- Create trigger for user_preferences table
+-- Create trigger for user_preferences table (drop existing first for idempotency)
+DROP TRIGGER IF EXISTS update_user_preferences_updated_at ON user_preferences;
 CREATE TRIGGER update_user_preferences_updated_at 
     BEFORE UPDATE ON user_preferences 
     FOR EACH ROW 

@@ -31,7 +31,7 @@ import {
   updateWithUserId, 
   deleteWithUserId 
 } from '@/lib/supabaseHelpers';
-import { useUserPreferences, SortField, SortDirection } from '@/lib/userPreferences';
+import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
 
 interface Client {
   id: string;

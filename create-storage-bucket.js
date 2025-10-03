@@ -35,7 +35,7 @@ async function createStorageBucket() {
     }
     
     // Create the bucket
-    const { data, error } = await supabase.storage.createBucket('documents', {
+    const { error } = await supabase.storage.createBucket('documents', {
       public: true,
       allowedMimeTypes: [
         'application/pdf',

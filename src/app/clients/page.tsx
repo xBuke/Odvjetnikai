@@ -25,13 +25,12 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
-  selectWithUserId, 
   selectWithUserIdAndOrder,
   insertAndReturnWithUserId, 
   updateWithUserId, 
   deleteWithUserId 
 } from '@/lib/supabaseHelpers';
-import { useUserPreferences, SortField, SortDirection } from '@/lib/userPreferences';
+import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
 
 interface Client {
   id: string;

@@ -30,7 +30,7 @@ import {
   getUserOrThrow
 } from '@/lib/supabaseHelpers';
 import { getDocumentTypeOptions, getDocumentLabel, type DocumentType } from '@/lib/documentTypes';
-import { useUserPreferences, SortField, SortDirection } from '@/lib/userPreferences';
+import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
 import { validateFile, validateDocumentType, getFileValidationErrorMessage } from '@/lib/fileValidation';
 
 interface Case {

@@ -1,50 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { formatDbErrorToUserMessage } from '@/lib/subscription';
+import { createCaseSchema, updateCaseSchema, validateRequestBody } from '@/lib/validation';
+import { getUserFromRequest, handleApiError, createSuccessResponse, validateRequestMethod } from '@/lib/api-helpers';
 
 export async function POST(request: NextRequest) {
   try {
+    validateRequestMethod(request, ['POST']);
+    
     const body = await request.json();
-    const { title, client_id, status, notes } = body;
-
-    // Validate required fields
-    if (!title || !client_id || !status) {
-      return NextResponse.json(
-        { error: 'All required fields must be provided' },
-        { status: 400 }
-      );
-    }
-
-    // Get the current user from the Authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
-    }
-
-    // Extract token from "Bearer <token>"
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verify the token and get user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
+    const validatedData = validateRequestBody(createCaseSchema, body);
+    const user = await getUserFromRequest(request);
 
     // Insert the case with user_id
     const { data, error } = await supabaseAdmin
       .from('cases')
       .insert([{
-        title,
-        client_id,
-        status,
-        notes: notes || '',
+        title: validatedData.title,
+        client_id: validatedData.client_id,
+        status: validatedData.status,
+        notes: validatedData.notes || '',
+        case_type: validatedData.case_type,
+        case_status: validatedData.case_status,
+        start_date: validatedData.start_date,
+        end_date: validatedData.end_date,
         user_id: user.id
       }])
       .select()
@@ -56,52 +35,29 @@ export async function POST(request: NextRequest) {
       // Check if it's a trial limit error
       if (error.message.includes('Trial limit') || error.message.includes('Trial expired')) {
         return NextResponse.json(
-          { error: error.message },
+          { success: false, error: error.message },
           { status: 409 }
         );
       }
       
       // Generic error
       return NextResponse.json(
-        { error: formatDbErrorToUserMessage(error.message) },
+        { success: false, error: formatDbErrorToUserMessage(error.message) },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true, data }, { status: 201 });
+    return createSuccessResponse(data, 201);
 
   } catch (error) {
-    console.error('API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'POST /api/cases');
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // Get the current user from the Authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
-    }
-
-    // Extract token from "Bearer <token>"
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verify the token and get user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
+    validateRequestMethod(request, ['GET']);
+    const user = await getUserFromRequest(request);
 
     // Get cases for the user with client information
     const { data, error } = await supabaseAdmin
@@ -118,18 +74,100 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Database error:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch cases' },
+        { success: false, error: 'Failed to fetch cases' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true, data });
+    return createSuccessResponse(data);
 
   } catch (error) {
-    console.error('API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GET /api/cases');
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    validateRequestMethod(request, ['PUT']);
+    
+    const body = await request.json();
+    const { id, ...updateData } = body;
+    
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Case ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const validatedData = validateRequestBody(updateCaseSchema, updateData);
+    const user = await getUserFromRequest(request);
+
+    // Update the case (RLS will ensure user can only update their own cases)
+    const { data, error } = await supabaseAdmin
+      .from('cases')
+      .update(validatedData)
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
+      return NextResponse.json(
+        { success: false, error: formatDbErrorToUserMessage(error.message) },
+        { status: 500 }
+      );
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        { success: false, error: 'Case not found or access denied' },
+        { status: 404 }
+      );
+    }
+
+    return createSuccessResponse(data);
+
+  } catch (error) {
+    return handleApiError(error, 'PUT /api/cases');
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    validateRequestMethod(request, ['DELETE']);
+    
+    const url = new URL(request.url);
+    const id = url.searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Case ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const user = await getUserFromRequest(request);
+
+    // Delete the case (RLS will ensure user can only delete their own cases)
+    const { error } = await supabaseAdmin
+      .from('cases')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Database error:', error);
+      return NextResponse.json(
+        { success: false, error: formatDbErrorToUserMessage(error.message) },
+        { status: 500 }
+      );
+    }
+
+    return createSuccessResponse({ message: 'Case deleted successfully' });
+
+  } catch (error) {
+    return handleApiError(error, 'DELETE /api/cases');
   }
 }

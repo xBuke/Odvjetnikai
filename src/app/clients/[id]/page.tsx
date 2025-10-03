@@ -19,36 +19,19 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { selectSingleWithUserId } from '@/lib/supabaseHelpers';
+import type { Client, Case, Document } from '../../../types/supabase';
 
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  oib: string;
-  notes: string;
-  readonly updated_at?: string; // Read-only, automatically managed by database trigger
-}
-
-interface Case {
-  id: string;
-  title: string;
-  status: 'Active' | 'In Review' | 'Pending' | 'Closed';
+// Use generated types from Supabase
+type CaseWithDetails = Case & {
   statusColor: 'green' | 'yellow' | 'blue' | 'gray';
   caseType: string;
   lastActivity: string;
   description: string;
-}
+};
 
-interface Document {
-  id: string;
-  title: string;
-  type: string;
-  uploadDate: string;
-  size: string;
-  status: 'Uploaded' | 'In Review' | 'Approved' | 'Rejected';
+type DocumentWithDetails = Document & {
   statusColor: 'blue' | 'yellow' | 'green' | 'red';
-}
+};
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -383,7 +366,31 @@ export default function ClientDetailPage() {
                       <button className="p-1 text-muted-foreground hover:text-foreground transition-colors duration-200" title="View document">
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button className="p-1 text-muted-foreground hover:text-foreground transition-colors duration-200" title="Download document">
+                      <button 
+                        className="p-1 text-muted-foreground hover:text-foreground transition-colors duration-200" 
+                        title="Download document"
+                        onClick={async () => {
+                          try {
+                            const { getSignedUrlViaApi, isDemoMode } = await import('@/lib/documentUrls');
+                            const { supabase } = await import('@/lib/supabaseClient');
+                            
+                            let downloadUrl: string;
+                            
+                            if (isDemoMode()) {
+                              const { data: { publicUrl } } = supabase.storage
+                                .from('documents')
+                                .getPublicUrl(document.file_url);
+                              downloadUrl = publicUrl;
+                            } else {
+                              downloadUrl = await getSignedUrlViaApi(document.file_url);
+                            }
+                            
+                            window.open(downloadUrl, '_blank');
+                          } catch (error) {
+                            console.error('Error downloading document:', error);
+                          }
+                        }}
+                      >
                         <Download className="w-4 h-4" />
                       </button>
                     </div>

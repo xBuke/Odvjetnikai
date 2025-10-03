@@ -53,7 +53,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' }>>([]);
 
   const showToast = (message: string, type: 'success' | 'error') => {
-    const id = Math.random().toString(36).substr(2, 9);
+    // Use a more stable ID generation to avoid hydration mismatches
+    const id = `toast-${performance.now()}-${crypto.randomUUID()}`;
     setToasts(prev => [...prev, { id, message, type }]);
   };
 

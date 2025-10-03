@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { formatDbErrorToUserMessage } from '@/lib/subscription';
-import { createDocumentSchema, updateDocumentSchema, validateRequestBody } from '@/lib/validation';
+import { createBillingEntrySchema, updateBillingEntrySchema, validateRequestBody } from '@/lib/validation';
 import { getUserFromRequest, handleApiError, createSuccessResponse, validateRequestMethod } from '@/lib/api-helpers';
 
 export async function POST(request: NextRequest) {
@@ -9,19 +9,18 @@ export async function POST(request: NextRequest) {
     validateRequestMethod(request, ['POST']);
     
     const body = await request.json();
-    const validatedData = validateRequestBody(createDocumentSchema, body);
+    const validatedData = validateRequestBody(createBillingEntrySchema, body);
     const user = await getUserFromRequest(request);
 
-    // Insert the document with user_id
+    // Insert the billing entry with user_id
     const { data, error } = await supabaseAdmin
-      .from('documents')
+      .from('billing_entries')
       .insert([{
-        name: validatedData.name,
-        file_url: validatedData.file_url,
+        client_id: validatedData.client_id,
         case_id: validatedData.case_id,
-        file_size: validatedData.file_size,
-        file_type: validatedData.file_type,
-        type: validatedData.type,
+        hours: validatedData.hours,
+        rate: validatedData.rate,
+        notes: validatedData.notes,
         user_id: user.id
       }])
       .select()
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
     return createSuccessResponse(data, 201);
 
   } catch (error) {
-    return handleApiError(error, 'POST /api/documents');
+    return handleApiError(error, 'POST /api/billing-entries');
   }
 }
 
@@ -57,11 +56,14 @@ export async function GET(request: NextRequest) {
     validateRequestMethod(request, ['GET']);
     const user = await getUserFromRequest(request);
 
-    // Get documents for the user with case information
+    // Get billing entries for the user with client and case information
     const { data, error } = await supabaseAdmin
-      .from('documents')
+      .from('billing_entries')
       .select(`
         *,
+        clients (
+          name
+        ),
         cases (
           title
         )
@@ -72,7 +74,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Database error:', error);
       return NextResponse.json(
-        { success: false, error: 'Failed to fetch documents' },
+        { success: false, error: 'Failed to fetch billing entries' },
         { status: 500 }
       );
     }
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
     return createSuccessResponse(data);
 
   } catch (error) {
-    return handleApiError(error, 'GET /api/documents');
+    return handleApiError(error, 'GET /api/billing-entries');
   }
 }
 
@@ -93,17 +95,17 @@ export async function PUT(request: NextRequest) {
     
     if (!id) {
       return NextResponse.json(
-        { success: false, error: 'Document ID is required' },
+        { success: false, error: 'Billing entry ID is required' },
         { status: 400 }
       );
     }
 
-    const validatedData = validateRequestBody(updateDocumentSchema, updateData);
+    const validatedData = validateRequestBody(updateBillingEntrySchema, updateData);
     const user = await getUserFromRequest(request);
 
-    // Update the document (RLS will ensure user can only update their own documents)
+    // Update the billing entry (RLS will ensure user can only update their own entries)
     const { data, error } = await supabaseAdmin
-      .from('documents')
+      .from('billing_entries')
       .update(validatedData)
       .eq('id', id)
       .eq('user_id', user.id)
@@ -120,7 +122,7 @@ export async function PUT(request: NextRequest) {
 
     if (!data) {
       return NextResponse.json(
-        { success: false, error: 'Document not found or access denied' },
+        { success: false, error: 'Billing entry not found or access denied' },
         { status: 404 }
       );
     }
@@ -128,7 +130,7 @@ export async function PUT(request: NextRequest) {
     return createSuccessResponse(data);
 
   } catch (error) {
-    return handleApiError(error, 'PUT /api/documents');
+    return handleApiError(error, 'PUT /api/billing-entries');
   }
 }
 
@@ -141,16 +143,16 @@ export async function DELETE(request: NextRequest) {
     
     if (!id) {
       return NextResponse.json(
-        { success: false, error: 'Document ID is required' },
+        { success: false, error: 'Billing entry ID is required' },
         { status: 400 }
       );
     }
 
     const user = await getUserFromRequest(request);
 
-    // Delete the document (RLS will ensure user can only delete their own documents)
+    // Delete the billing entry (RLS will ensure user can only delete their own entries)
     const { error } = await supabaseAdmin
-      .from('documents')
+      .from('billing_entries')
       .delete()
       .eq('id', id)
       .eq('user_id', user.id);
@@ -163,9 +165,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    return createSuccessResponse({ message: 'Document deleted successfully' });
+    return createSuccessResponse({ message: 'Billing entry deleted successfully' });
 
   } catch (error) {
-    return handleApiError(error, 'DELETE /api/documents');
+    return handleApiError(error, 'DELETE /api/billing-entries');
   }
 }

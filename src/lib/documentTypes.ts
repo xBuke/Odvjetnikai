@@ -1,3 +1,5 @@
+import type { DocumentType } from '../../types/supabase';
+
 export const DOCUMENT_TYPES = {
   ugovor: "Ugovor",
   punomoc: "Punomoć",
@@ -9,7 +11,8 @@ export const DOCUMENT_TYPES = {
   dokazni_materijal: "Dokazni materijal"
 } as const;
 
-export type DocumentType = keyof typeof DOCUMENT_TYPES;
+// Re-export the generated type
+export type { DocumentType };
 
 export function getDocumentLabel(type: DocumentType): string {
   return DOCUMENT_TYPES[type] ?? type;

@@ -36,14 +36,16 @@ async function createStorageBucket() {
     
     // Create the bucket
     const { error } = await supabase.storage.createBucket('documents', {
-      public: true,
+      public: false, // Private bucket for security
       allowedMimeTypes: [
         'application/pdf',
         'image/jpeg',
         'image/jpg', 
         'image/png',
         'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        'application/rtf'
       ],
       fileSizeLimit: 50 * 1024 * 1024 // 50MB
     });
@@ -53,7 +55,8 @@ async function createStorageBucket() {
     }
     
     console.log('✅ Successfully created storage bucket "documents"');
-    console.log('📁 Bucket is public and ready for file uploads');
+    console.log('📁 Bucket is private and ready for secure file uploads');
+    console.log('🔒 Files will be accessed via signed URLs for security');
     
   } catch (error) {
     console.error('❌ Error creating storage bucket:', error.message);

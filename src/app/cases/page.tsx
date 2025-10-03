@@ -34,36 +34,16 @@ import {
 import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
 import TrialBanner from '@/components/billing/TrialBanner';
 import { canCreateEntity } from '@/lib/ui-limit';
+import type { Client, Case, CaseStatus } from '../../../types/supabase';
 
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  oib: string;
-  notes: string;
-  created_at?: string;
-  readonly updated_at?: string; // Read-only, automatically managed by database trigger
-}
-
-interface Case {
-  id: string;
-  title: string;
-  client_id: string;
-  status: 'Open' | 'In Progress' | 'Closed';
-  case_status: 'Zaprimanje' | 'Priprema' | 'Ročište' | 'Presuda';
-  notes: string;
-  created_at: string;
-  readonly updated_at?: string; // Read-only, automatically managed by database trigger
+// Use generated types from Supabase
+type CaseWithClient = Case & {
+  clientName: string;
+  statusColor: 'blue' | 'yellow' | 'green';
   clients?: {
     name: string;
   };
-}
-
-interface CaseWithClient extends Case {
-  clientName: string;
-  statusColor: 'blue' | 'yellow' | 'green';
-}
+};
 
 // TypeScript interfaces for sorting (extended from shared types)
 type CasesSortField = 'title' | 'status' | 'created_at' | 'updated_at' | 'client_name';
@@ -360,8 +340,8 @@ export default function CasesPage() {
     setFormData({
       title: caseItem.title,
       client_id: caseItem.client_id,
-      status: caseItem.status,
-      notes: caseItem.notes
+      status: caseItem.status as 'Open' | 'In Progress' | 'Closed',
+      notes: caseItem.notes || ''
     });
     setIsModalOpen(true);
   };
@@ -421,11 +401,10 @@ export default function CasesPage() {
   // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    const year = date.getFullYear();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const day = date.getDate();
+    return `${month} ${day}, ${year}`;
   };
 
   return (

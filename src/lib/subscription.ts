@@ -2,18 +2,7 @@
  * Subscription utilities for trial and subscription management
  */
 
-export interface Profile {
-  id: string;
-  email: string;
-  subscription_status: string;
-  subscription_plan?: string;
-  trial_expires_at?: string;
-  trial_limit?: number;
-  role?: string;
-  full_name?: string;
-  username?: string;
-  avatar_url?: string;
-}
+import type { Profile } from '../../types/supabase';
 
 /**
  * Check if user is on trial

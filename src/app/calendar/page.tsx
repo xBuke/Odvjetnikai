@@ -78,7 +78,7 @@ export default function CalendarPage() {
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [view, setView] = useState<View>(Views.MONTH);
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState<Date | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null);
   const [newEvent, setNewEvent] = useState<NewEvent>({
@@ -93,11 +93,16 @@ export default function CalendarPage() {
 
   const { defaultDate, scrollToTime } = useMemo(
     () => ({
-      defaultDate: new Date(),
+      defaultDate: new Date('2024-01-01'), // Use stable date for SSR
       scrollToTime: new Date(1970, 1, 1, 6),
     }),
     []
   );
+
+  // Set initial date after component mounts to avoid hydration mismatch
+  useEffect(() => {
+    setDate(new Date('2024-01-01')); // Use stable date for SSR
+  }, []);
 
   // Load cases from Supabase
   const loadCases = useCallback(async () => {
@@ -222,7 +227,8 @@ export default function CalendarPage() {
   };
 
   const handleSelectEvent = (event: Event) => {
-    alert(`Event: ${event.title}\nCase: ${event.case}\nDate: ${event.start.toLocaleDateString("hr-HR")}`);
+    const dateStr = event.start.toLocaleDateString('en-US');
+    alert(`Event: ${event.title}\nCase: ${event.case}\nDate: ${dateStr}`);
   };
 
   const handleEditDeadline = (deadline: Deadline) => {
@@ -376,7 +382,7 @@ export default function CalendarPage() {
             style={{ height: 600 }}
             view={view}
             onView={setView}
-            date={date}
+            date={date || defaultDate}
             onNavigate={setDate}
             onSelectEvent={handleSelectEvent}
             eventPropGetter={eventStyleGetter}
@@ -411,7 +417,7 @@ export default function CalendarPage() {
                     <h4 className="font-medium text-foreground">{deadline.title}</h4>
                     <p className="text-sm text-muted-foreground">{deadline.cases?.title || 'Unknown Case'}</p>
                     <p className="text-xs text-muted-foreground">
-                      {t('dashboard.due')}: {new Date(deadline.due_date).toLocaleDateString("hr-HR")} {t('calendar.at')} {new Date(deadline.due_date).toLocaleTimeString("hr-HR", { hour: '2-digit', minute: '2-digit' })}
+                      {t('dashboard.due')}: {new Date(deadline.due_date).toLocaleDateString('en-US')} {t('calendar.at')} {new Date(deadline.due_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">

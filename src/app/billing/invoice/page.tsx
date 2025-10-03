@@ -46,12 +46,17 @@ interface InvoiceData {
 
 export default function InvoicePreviewPage() {
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
-  const [invoiceNumber] = useState(`INV-${Date.now().toString().slice(-6)}`);
-  const [invoiceDate] = useState(new Date().toLocaleDateString());
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
+    // Set invoice number and date after component mounts to avoid hydration mismatch
+    const timestamp = Date.now();
+    setInvoiceNumber(`INV-${timestamp.toString().slice(-6)}`);
+    setInvoiceDate(new Date(timestamp).toLocaleDateString());
+    
     // Get invoice data from sessionStorage
     const storedData = sessionStorage.getItem('invoiceData');
     if (storedData) {
@@ -285,7 +290,7 @@ export default function InvoicePreviewPage() {
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
                           <div className="flex items-center">
                             <Calendar className="w-4 h-4 text-muted-foreground mr-2" />
-                            {new Date(entry.created_at).toLocaleDateString()}
+                            {new Date(entry.created_at).toLocaleDateString('en-US')}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-foreground">
@@ -307,7 +312,7 @@ export default function InvoicePreviewPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-foreground">
-                          ${entry.total.toLocaleString()}
+                          ${entry.total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                         </td>
                       </tr>
                     ))}
@@ -326,7 +331,7 @@ export default function InvoicePreviewPage() {
                     .map((entry) => (
                       <div key={entry.id} className="bg-muted p-3 rounded-lg">
                         <div className="text-sm text-muted-foreground mb-1">
-                          {entry.caseName} - {new Date(entry.created_at).toLocaleDateString()}
+                          {entry.caseName} - {new Date(entry.created_at).toLocaleDateString('en-US')}
                         </div>
                         <div className="text-sm text-foreground">{entry.notes}</div>
                       </div>
@@ -342,7 +347,7 @@ export default function InvoicePreviewPage() {
                   <div className="flex justify-between items-center py-2">
                     <span className="text-sm text-muted-foreground">Subtotal:</span>
                     <span className="text-sm font-medium text-foreground">
-                      ${invoiceData.total.toLocaleString()}
+                      ${invoiceData.total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2">
@@ -353,7 +358,7 @@ export default function InvoicePreviewPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-semibold text-foreground">Total:</span>
                       <span className="text-lg font-bold text-foreground">
-                        ${invoiceData.total.toLocaleString()}
+                        ${invoiceData.total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                       </span>
                     </div>
                   </div>
@@ -373,7 +378,7 @@ export default function InvoicePreviewPage() {
             {/* Footer */}
             <div className="mt-8 pt-6 border-t border-border text-center text-sm text-muted-foreground">
               <p>Thank you for your business!</p>
-              <p className="mt-1">This invoice was generated on {new Date().toLocaleDateString()}</p>
+              <p className="mt-1">This invoice was generated on {invoiceDate}</p>
             </div>
           </div>
         </div>

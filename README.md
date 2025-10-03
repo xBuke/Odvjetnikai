@@ -53,6 +53,11 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
 STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
 STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
+
+# Demo Mode Configuration
+# Set to 'true' to enable demo mode (uses public URLs for easier access)
+# Set to 'false' or leave empty for production mode (uses signed URLs for security)
+NEXT_PUBLIC_DEMO_MODE=false
 ```
 
 > **⚠️ Security Note:** The above are example placeholder values. Never commit real API keys or secrets to version control.
@@ -86,19 +91,35 @@ This creates:
 
 ### 4. Storage Setup
 
+#### Option A: Automated Setup (Recommended)
+
+Run the provided script to create the storage bucket:
+
+```bash
+node create-storage-bucket.js
+```
+
+#### Option B: Manual Setup
+
 1. Go to **Storage** in your Supabase dashboard
 2. Click **Create a new bucket**
 3. Name it `documents`
-4. Set it as **Public** (for file downloads)
-5. Click **Create bucket**
+4. Set it as **Private** (for security)
+5. Set file size limit to **50MB**
+6. Add allowed MIME types: `application/pdf`, `image/jpeg`, `image/png`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `text/plain`, `application/rtf`
+7. Click **Create bucket**
 
-#### Storage Policies (Recommended)
+#### Storage Policies
 
-After creating the bucket, set up these policies in **Storage** > **Policies**:
+The storage policies are automatically applied via the migration file `20250114_create_documents_storage_bucket.sql`. These policies ensure:
 
-- **Upload**: Allow authenticated users to upload documents
-- **View**: Allow authenticated users to view documents  
-- **Delete**: Allow authenticated users to delete documents
+- **Authenticated users can upload** their own documents
+- **Authenticated users can view** only their own documents  
+- **Authenticated users can delete** their own documents
+- **Private bucket** - files accessed via signed URLs for security
+- **Production uses signed URLs** for all confidential documents with 1-hour expiration
+
+For detailed storage configuration, see [STORAGE_SETUP.md](./STORAGE_SETUP.md).
 
 ### 5. Run the Application
 
@@ -147,6 +168,12 @@ The project includes several migration files in the `supabase/migrations/` direc
 - RLS policies ensure data isolation between users
 - Storage policies control file access permissions
 - JWT tokens are used for secure API communication
+- **Document Security**: Production uses signed URLs for all confidential documents with 1-hour expiration
+- **Demo Mode**: Set `NEXT_PUBLIC_DEMO_MODE=true` for development/demo purposes (uses public URLs)
+- **API Security**: All API routes validate user authentication and ownership
+- **File Access**: Documents are accessed via signed URLs that expire after 1 hour
+- **Environment Variables**: Never commit real API keys or secrets to version control
+- **CI/CD Security**: Automated security audits and secret scanning in CI pipeline
 
 ## Deployment (Vercel)
 

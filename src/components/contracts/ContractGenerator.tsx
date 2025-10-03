@@ -54,7 +54,7 @@ export default function ContractGenerator({
   const [templates] = useState<ContractTemplate[]>(getContractTemplates());
   const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
   const [contractData, setContractData] = useState<ContractData>({
-    date: formatDateForContract(new Date()),
+    date: '', // Will be set in useEffect to avoid hydration mismatch
     client_name: selectedCase?.clientName || '',
     client_address: '',
     law_firm_name: lawFirmInfo?.name || '',
@@ -66,6 +66,14 @@ export default function ContractGenerator({
   const [generatedContract, setGeneratedContract] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+
+  // Set initial date after component mounts to avoid hydration mismatch
+  useEffect(() => {
+    setContractData(prev => ({
+      ...prev,
+      date: formatDateForContract(new Date())
+    }));
+  }, []);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -266,11 +274,6 @@ export default function ContractGenerator({
         throw uploadError;
       }
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('documents')
-        .getPublicUrl(filePath);
-
       // Determine document type based on template
       let documentType = 'ugovor';
       if (selectedTemplate.id === 'power-of-attorney-contract') {
@@ -279,12 +282,12 @@ export default function ContractGenerator({
         documentType = 'tuzba';
       }
 
-      // Save document metadata to database
+      // Save document metadata to database with file path instead of public URL
       const { error: dbError } = await supabase
         .from('documents')
         .insert({
           name: fileName,
-          file_url: urlData.publicUrl,
+          file_url: filePath, // Store file path instead of public URL for security
           type: documentType,
           case_id: selectedCase?.id || null,
           size: pdfBlob.size,

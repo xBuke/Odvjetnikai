@@ -12,20 +12,9 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { selectSingleWithUserId, updateWithUserId } from '@/lib/supabaseHelpers';
+import type { Case, CaseStatus } from '../../../types/supabase';
 
-interface Case {
-  id: string;
-  title: string;
-  client_id: string;
-  status: 'Open' | 'In Progress' | 'Closed';
-  case_status: 'Zaprimanje' | 'Priprema' | 'Ročište' | 'Presuda';
-  notes: string;
-  created_at: string;
-  readonly updated_at?: string; // Read-only, automatically managed by database trigger
-  clients?: {
-    name: string;
-  };
-}
+// Use generated types from Supabase
 
 export default function EditCasePage() {
   const params = useParams();

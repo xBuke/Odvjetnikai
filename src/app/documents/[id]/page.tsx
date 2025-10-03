@@ -14,6 +14,7 @@ import {
   Edit
 } from 'lucide-react';
 import { getDocumentLabel, type DocumentType } from '@/lib/documentTypes';
+import { supabase } from '@/lib/supabaseClient';
 
 
 interface Document {
@@ -224,10 +225,31 @@ Net Income: $400,000`
   }, [documentId, mockDocuments]);
 
   // Handle download
-  const handleDownload = () => {
-    if (document) {
-      // Downloading document
-      alert(`Downloading ${document.name}`);
+  const handleDownload = async () => {
+    if (!document) return;
+    
+    try {
+      // Import the document URL utility
+      const { getSignedUrlViaApi, isDemoMode } = await import('@/lib/documentUrls');
+      
+      let downloadUrl: string;
+      
+      if (isDemoMode()) {
+        // In demo mode, use public URL for easier access
+        const { data: { publicUrl } } = supabase.storage
+          .from('documents')
+          .getPublicUrl(document.file_url);
+        downloadUrl = publicUrl;
+      } else {
+        // In production, use signed URL for security
+        downloadUrl = await getSignedUrlViaApi(document.file_url);
+      }
+      
+      // Open file URL in new tab for download
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Error generating download URL:', error);
+      alert('Greška pri preuzimanju dokumenta');
     }
   };
 

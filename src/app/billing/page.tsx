@@ -27,53 +27,23 @@ import {
   updateWithUserId, 
   deleteWithUserId 
 } from '@/lib/supabaseHelpers';
+import type { Client, Case, BillingEntry, CaseStatus } from '../../../types/supabase';
 
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  oib: string;
-  notes: string;
-  readonly updated_at?: string; // Read-only, automatically managed by database trigger
-}
-
-interface Case {
-  id: string;
-  title: string;
-  client_id: string;
-  status: 'Open' | 'In Progress' | 'Closed';
-  case_status: 'Zaprimanje' | 'Priprema' | 'Ročište' | 'Presuda';
-  notes: string;
-  created_at: string;
-  readonly updated_at?: string; // Read-only, automatically managed by database trigger
-  clients?: {
-    name: string;
-  };
-}
-
-interface BillingEntry {
-  id: string;
-  client_id: string;
-  case_id: string;
-  hours: number;
-  rate: number;
-  notes?: string;
-  created_at: string;
-  updated_at?: string;
+// Use generated types from Supabase
+type BillingEntryWithRelations = BillingEntry & {
   clients?: {
     name: string;
   };
   cases?: {
     title: string;
   };
-}
+};
 
-interface BillingEntryWithDetails extends BillingEntry {
+type BillingEntryWithDetails = BillingEntry & {
   clientName: string;
   caseName: string;
   total: number;
-}
+};
 
 interface TimeEntryForm {
   client_id: string;
@@ -323,7 +293,7 @@ export default function BillingPage() {
     setEditingEntry(entry);
     setFormData({
       client_id: entry.client_id,
-      case_id: entry.case_id,
+      case_id: entry.case_id || '',
       hours: entry.hours,
       rate: entry.rate,
       notes: entry.notes || ''
@@ -361,7 +331,7 @@ export default function BillingPage() {
     }
     
     // Generate a unique invoice ID
-    const invoiceId = Date.now().toString();
+    const invoiceId = new Date().getTime().toString();
     
     // Create invoice data and navigate to specific invoice page
     const invoiceData = {
@@ -414,7 +384,7 @@ export default function BillingPage() {
           <div className="flex flex-col space-y-3 lg:flex-row lg:items-center lg:space-y-0 lg:space-x-4 lg:flex-shrink-0">
             <div className="text-left lg:text-right">
               <p className="text-xs sm:text-sm text-muted-foreground">{t('billing.totalOutstanding')}</p>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">${totalAmount.toLocaleString()}</p>
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">${totalAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</p>
             </div>
             <button
               onClick={handleAdd}
@@ -461,7 +431,7 @@ export default function BillingPage() {
                     <span>{invoice.date}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-foreground">${invoice.total.toLocaleString()}</span>
+                    <span className="text-sm font-medium text-foreground">${invoice.total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
                     <button
                       onClick={() => window.open(`/billing/invoice/${invoice.id}`, '_blank')}
                       className="text-primary hover:text-primary/80 text-xs font-medium transition-colors duration-200"
@@ -521,7 +491,7 @@ export default function BillingPage() {
                     </div>
                   </td>
                   <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-foreground">${invoice.total.toLocaleString()}</span>
+                    <span className="text-sm font-medium text-foreground">${invoice.total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
                   </td>
                   <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -556,7 +526,7 @@ export default function BillingPage() {
             {selectedEntries.length > 0 && (
               <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
                 <span className="text-xs sm:text-sm text-muted-foreground">
-                  {selectedEntries.length} {t('common.selected')} • {t('common.total')}: ${selectedTotal.toLocaleString()}
+                  {selectedEntries.length} {t('common.selected')} • {t('common.total')}: ${selectedTotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                 </span>
                 <button
                   onClick={generateInvoice}
@@ -635,7 +605,7 @@ export default function BillingPage() {
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="flex items-center text-muted-foreground">
                       <Calendar className="w-3 h-3 mr-1" />
-                      <span>{new Date(entry.created_at).toLocaleDateString()}</span>
+                      <span>{new Date(entry.created_at).toLocaleDateString('en-US')}</span>
                     </div>
                     <div className="flex items-center text-muted-foreground">
                       <Clock className="w-3 h-3 mr-1" />
@@ -646,7 +616,7 @@ export default function BillingPage() {
                       <span>${entry.rate}/h</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-medium text-foreground">${entry.total.toLocaleString()}</span>
+                      <span className="text-sm font-medium text-foreground">${entry.total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
                     </div>
                   </div>
                   {entry.notes && (
@@ -725,7 +695,7 @@ export default function BillingPage() {
                     <td className="px-3 lg:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
                       <div className="flex items-center">
                         <Calendar className="w-4 h-4 text-muted-foreground mr-2" />
-                        <span className="text-sm text-foreground">{new Date(entry.created_at).toLocaleDateString()}</span>
+                        <span className="text-sm text-foreground">{new Date(entry.created_at).toLocaleDateString('en-US')}</span>
                       </div>
                     </td>
                     <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
@@ -741,7 +711,7 @@ export default function BillingPage() {
                       </div>
                     </td>
                     <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-foreground">${entry.total.toLocaleString()}</span>
+                      <span className="text-sm font-medium text-foreground">${entry.total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
                     </td>
                     <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">

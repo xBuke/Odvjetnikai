@@ -24,22 +24,11 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { selectSingleWithUserId, updateWithUserId } from '@/lib/supabaseHelpers';
-import CaseTimeline, { CaseStatus } from '@/components/ui/CaseTimeline';
+import CaseTimeline from '@/components/ui/CaseTimeline';
+import type { Case, CaseStatus } from '../../../types/supabase';
 
 
-interface Case {
-  id: string;
-  title: string;
-  client_id: string;
-  status: 'Open' | 'In Progress' | 'Closed';
-  case_status: 'Zaprimanje' | 'Priprema' | 'Ročište' | 'Presuda';
-  notes: string;
-  created_at: string;
-  readonly updated_at?: string; // Read-only, automatically managed by database trigger
-  clients?: {
-    name: string;
-  };
-}
+// Use generated types from Supabase
 
 interface TimelineEvent {
   id: string;
@@ -161,22 +150,22 @@ export default function CaseDetailPage() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    const year = date.getFullYear();
+    const month = date.toLocaleDateString('en-US', { month: 'long' });
+    const day = date.getDate();
+    return `${month} ${day}, ${year}`;
   };
 
   const formatDateTime = (dateString: string, timeString: string) => {
     const date = new Date(`${dateString}T${timeString}`);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
+    const year = date.getFullYear();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const day = date.getDate();
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${month} ${day}, ${year} at ${displayHours}:${minutes} ${ampm}`;
   };
 
   const handleAddEvent = (e: React.FormEvent) => {
@@ -192,7 +181,7 @@ export default function CaseDetailPage() {
 
     const now = new Date();
     const newTimelineEvent: TimelineEvent = {
-      id: Date.now().toString(),
+      id: now.getTime().toString(),
       type: newEvent.type,
       title: newEvent.title,
       description: newEvent.description,
@@ -224,7 +213,7 @@ export default function CaseDetailPage() {
       // Add status change event to timeline
       const now = new Date();
       const statusChangeEvent: TimelineEvent = {
-        id: Date.now().toString(),
+        id: now.getTime().toString(),
         type: 'status_change',
         title: 'Status promijenjen',
         description: `Status predmeta promijenjen na: ${newStatus}`,

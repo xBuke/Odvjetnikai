@@ -30,20 +30,13 @@ import {
   updateWithUserId, 
   deleteWithUserId 
 } from '@/lib/supabaseHelpers';
+import { clientsApi, handleApiError, handleApiSuccess } from '@/lib/api-client';
 import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
 import TrialBanner from '@/components/billing/TrialBanner';
 import { canCreateEntity } from '@/lib/ui-limit';
+import type { Client } from '../../types/supabase';
 
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  oib: string;
-  notes: string;
-  created_at?: string;
-  readonly updated_at?: string; // Read-only, automatically managed by database trigger
-}
+// Use generated types from Supabase
 
 // TypeScript interfaces for sorting
 type ClientsSortField = 'name' | 'email' | 'phone' | 'created_at' | 'updated_at';
@@ -101,24 +94,31 @@ export default function ClientsPage() {
     }
   }, [loadPreferences]);
 
-  // Load clients from Supabase with sorting
+  // Load clients from API with sorting
   const loadClients = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const orderBy = {
-        column: sortField,
-        ascending: sortDirection === 'asc'
-      };
-
-      const data = await selectWithUserIdAndOrder(supabase, 'clients', {}, '*', orderBy) as unknown as Client[];
-      setClients(data || []);
+      // Use the new API client
+      const response = await clientsApi.getAll();
+      const data = handleApiSuccess(response, showToast, 'Clients loaded successfully');
+      
+      // Apply client-side sorting since API doesn't support it yet
+      const sortedData = [...data].sort((a, b) => {
+        const aValue = a[sortField];
+        const bValue = b[sortField];
+        
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+      
+      setClients(sortedData);
     } catch (err) {
       console.error('Error loading clients:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load clients. Please try again.';
+      const errorMessage = handleApiError(err, showToast);
       setError(errorMessage);
-      showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     } finally {
       setLoading(false);
     }
@@ -226,28 +226,16 @@ export default function ClientsPage() {
       }
 
       if (editingClient) {
-        // Update existing client - only send fields that user can edit
-        const data = await updateWithUserId(
-          supabase, 
-          'clients', 
-          'id', 
-          editingClient.id, 
-          {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            oib: formData.oib,
-            notes: formData.notes
-            // updated_at will be automatically set by database trigger
-          }
-        );
+        // Update existing client using API
+        const response = await clientsApi.update(editingClient.id, {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          oib: formData.oib,
+          notes: formData.notes
+        });
 
-        if (!data || data.length === 0) {
-          throw new Error('Klijent nije pronađen');
-        }
-
-        // Client updated successfully
-        showToast('✔ Klijent uspješno ažuriran', 'success');
+        handleApiSuccess(response, showToast, '✔ Klijent uspješno ažuriran');
         
         // Auto-close modal and reset form after successful update
         await loadClients();
@@ -256,8 +244,8 @@ export default function ClientsPage() {
         setIsModalOpen(false);
         return; // Exit early to prevent duplicate form reset
       } else {
-        // Add new client
-        await insertAndReturnWithUserId(supabase, 'clients', {
+        // Add new client using API
+        const response = await clientsApi.create({
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
@@ -265,8 +253,7 @@ export default function ClientsPage() {
           notes: formData.notes
         });
 
-        // Client created successfully
-        showToast('✔ Klijent uspješno dodan', 'success');
+        handleApiSuccess(response, showToast, '✔ Klijent uspješno dodan');
       }
 
       // Reload clients and reset form (only for new clients)
@@ -275,14 +262,9 @@ export default function ClientsPage() {
       setEditingClient(null);
       setIsModalOpen(false);
     } catch (err) {
-      console.error('Error saving client:', {
-        error: err,
-        message: err instanceof Error ? err.message : 'Unknown error',
-        stack: err instanceof Error ? err.stack : undefined
-      });
-      const errorMessage = err instanceof Error ? err.message : 'Greška pri spremanju klijenta. Molimo pokušajte ponovno.';
+      console.error('Error saving client:', err);
+      const errorMessage = handleApiError(err, showToast);
       setError(errorMessage);
-      showToast(errorMessage ?? "Greška pri spremanju", 'error');
     } finally {
       setSubmitting(false);
     }
@@ -307,25 +289,16 @@ export default function ClientsPage() {
       try {
         setError(null);
         
-        const data = await deleteWithUserId(supabase, 'clients', 'id', clientId);
-
-        if (!data || data.length === 0) {
-          throw new Error('Klijent nije pronađen');
-        }
-
-        // Client deleted successfully
-        showToast('✔ Klijent uspješno obrisan', 'success');
+        // Use the new API client
+        const response = await clientsApi.delete(clientId);
+        handleApiSuccess(response, showToast, '✔ Klijent uspješno obrisan');
+        
         // Reload clients after deletion
         await loadClients();
       } catch (err) {
-        console.error('Error deleting client:', {
-          error: err,
-          message: err instanceof Error ? err.message : 'Unknown error',
-          stack: err instanceof Error ? err.stack : undefined
-        });
-        const errorMessage = err instanceof Error ? err.message : 'Greška pri brisanju klijenta. Molimo pokušajte ponovno.';
+        console.error('Error deleting client:', err);
+        const errorMessage = handleApiError(err, showToast);
         setError(errorMessage);
-        showToast(errorMessage ?? "Greška pri spremanju", 'error');
       }
     }
   };

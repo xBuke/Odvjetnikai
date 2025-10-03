@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../../types/supabase';
 
 /**
  * Centralized Supabase operations with user context
@@ -11,7 +12,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
  * @returns User object
  * @throws Error if no user is authenticated
  */
-export async function getUserOrThrow(supabase: SupabaseClient) {
+export async function getUserOrThrow(supabase: SupabaseClient<Database>) {
   const { data: { user }, error } = await supabase.auth.getUser();
   
   if (error) {
@@ -35,7 +36,7 @@ export async function getUserOrThrow(supabase: SupabaseClient) {
  * @throws Error if operation fails
  */
 export async function insertWithUserId(
-  supabase: SupabaseClient, 
+  supabase: SupabaseClient<Database>, 
   table: string, 
   data: Record<string, unknown> | Record<string, unknown>[]
 ): Promise<Record<string, unknown>[]> {
@@ -73,7 +74,7 @@ export async function insertWithUserId(
  * @throws Error if operation fails
  */
 export async function selectWithUserId(
-  supabase: SupabaseClient, 
+  supabase: SupabaseClient<Database>, 
   table: string, 
   filters: Record<string, unknown> = {},
   selectColumns: string = '*'
@@ -103,7 +104,7 @@ export async function selectWithUserId(
 }
 
 export async function selectWithUserIdAndOrder(
-  supabase: SupabaseClient, 
+  supabase: SupabaseClient<Database>, 
   table: string, 
   filters: Record<string, unknown> = {},
   selectColumns: string = '*',
@@ -149,7 +150,7 @@ export async function selectWithUserIdAndOrder(
  * @throws Error if operation fails
  */
 export async function updateWithUserId(
-  supabase: SupabaseClient, 
+  supabase: SupabaseClient<Database>, 
   table: string, 
   idField: string, 
   idValue: string | number, 
@@ -182,7 +183,7 @@ export async function updateWithUserId(
  * @throws Error if operation fails
  */
 export async function deleteWithUserId(
-  supabase: SupabaseClient, 
+  supabase: SupabaseClient<Database>, 
   table: string, 
   idField: string, 
   idValue: string | number
@@ -215,7 +216,7 @@ export async function deleteWithUserId(
  * @throws Error if operation fails
  */
 export async function selectSingleWithUserId(
-  supabase: SupabaseClient, 
+  supabase: SupabaseClient<Database>, 
   table: string, 
   idField: string, 
   idValue: string | number,
@@ -247,7 +248,7 @@ export async function selectSingleWithUserId(
  * @throws Error if operation fails
  */
 export async function insertAndReturnWithUserId(
-  supabase: SupabaseClient, 
+  supabase: SupabaseClient<Database>, 
   table: string, 
   data: Record<string, unknown>
 ): Promise<Record<string, unknown>> {

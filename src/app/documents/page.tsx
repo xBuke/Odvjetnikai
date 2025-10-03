@@ -29,7 +29,8 @@ import {
   deleteWithUserId,
   getUserOrThrow
 } from '@/lib/supabaseHelpers';
-import { getDocumentTypeOptions, getDocumentLabel, type DocumentType } from '@/lib/documentTypes';
+import { getDocumentTypeOptions, getDocumentLabel } from '@/lib/documentTypes';
+import type { DocumentType, Case, Document } from '../../types/supabase';
 import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
 import { validateFile, validateDocumentType, getFileValidationErrorMessage } from '@/lib/fileValidation';
 import { getContractTemplates } from '@/lib/contractTemplates';
@@ -37,27 +38,16 @@ import ContractGenerator from '@/components/contracts/ContractGenerator';
 import TrialBanner from '@/components/billing/TrialBanner';
 import { canCreateEntity } from '@/lib/ui-limit';
 
-interface Case {
-  id: string;
-  title: string;
+// Use generated types from Supabase
+type CaseWithClient = Case & {
   clientName: string;
-  status: 'Open' | 'In Progress' | 'Closed';
-  case_status: 'Zaprimanje' | 'Priprema' | 'Ročište' | 'Presuda';
-}
+};
 
-interface Document {
-  id: string;
-  name: string;
-  file_url: string;
-  case_id: string | null;
-  uploaded_at: string;
-  file_size?: number;
-  file_type?: string;
-  type?: DocumentType;
+type DocumentWithCase = Document & {
   cases?: {
     title: string;
   };
-}
+};
 
 interface Template {
   id: string;
@@ -351,7 +341,8 @@ export default function DocumentsPage() {
       }
 
       // Upload file to Supabase Storage
-      const fileName = `${Date.now()}_${selectedFile.name}`;
+      const timestamp = new Date().getTime();
+      const fileName = `${timestamp}_${selectedFile.name}`;
       const { error: uploadError } = await supabase.storage
         .from('documents')
         .upload(`docs/${fileName}`, selectedFile);
@@ -361,15 +352,13 @@ export default function DocumentsPage() {
         throw uploadError;
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(`docs/${fileName}`);
+      // Store file path instead of public URL for security
+      const filePath = `docs/${fileName}`;
 
       // Insert metadata into documents table
       await insertWithUserId(supabase, 'documents', {
         name: uploadFormData.name,
-        file_url: publicUrl,
+        file_url: filePath, // Store file path instead of public URL
         case_id: uploadFormData.caseId || null,
         file_size: selectedFile.size,
         file_type: selectedFile.type,
@@ -405,9 +394,30 @@ export default function DocumentsPage() {
   };
 
   // Handle download
-  const handleDownload = (document: Document) => {
-    // Open file URL in new tab for download
-    window.open(document.file_url, '_blank');
+  const handleDownload = async (document: Document) => {
+    try {
+      // Import the document URL utility
+      const { getSignedUrlViaApi, isDemoMode } = await import('@/lib/documentUrls');
+      
+      let downloadUrl: string;
+      
+      if (isDemoMode()) {
+        // In demo mode, use public URL for easier access
+        const { data: { publicUrl } } = supabase.storage
+          .from('documents')
+          .getPublicUrl(document.file_url);
+        downloadUrl = publicUrl;
+      } else {
+        // In production, use signed URL for security
+        downloadUrl = await getSignedUrlViaApi(document.file_url);
+      }
+      
+      // Open file URL in new tab for download
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Error generating download URL:', error);
+      showToast('Greška pri preuzimanju dokumenta', 'error');
+    }
   };
 
   // Handle delete document
@@ -470,11 +480,10 @@ export default function DocumentsPage() {
   // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    const year = date.getFullYear();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const day = date.getDate();
+    return `${month} ${day}, ${year}`;
   };
 
   // Handle modal close
@@ -495,24 +504,23 @@ export default function DocumentsPage() {
       const fileName = `${contractName}.txt`;
 
       // Upload the contract as a document
+      const timestamp = new Date().getTime();
       const { error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(`docs/${Date.now()}_${fileName}`, blob);
+        .upload(`docs/${timestamp}_${fileName}`, blob);
 
       if (uploadError) {
         console.error('Storage upload error:', uploadError);
         throw uploadError;
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(`docs/${Date.now()}_${fileName}`);
+      // Get file path for storage
+      const filePath = `docs/${timestamp}_${fileName}`;
 
       // Insert metadata into documents table
       await insertWithUserId(supabase, 'documents', {
         name: contractName,
-        file_url: publicUrl,
+        file_url: filePath,
         case_id: null, // Can be linked to a case later
         file_size: blob.size,
         file_type: 'text/plain',

@@ -67,8 +67,14 @@ export default function InvoiceDetailPage() {
   
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [generationDate, setGenerationDate] = useState('');
 
   useEffect(() => {
+    // Set generation date after component mounts to avoid hydration mismatch
+    // Use stable date to avoid hydration mismatch
+    const stableDate = new Date('2024-01-01'); // Use a fixed date for SSR consistency
+    setGenerationDate(stableDate.toLocaleDateString('en-US'));
+    
     // Mock data - in a real app, this would fetch from an API
     const mockInvoiceData: InvoiceData = {
       id: invoiceId,
@@ -267,8 +273,8 @@ export default function InvoiceDetailPage() {
                   <span className="text-2xl font-bold">INVOICE</span>
                 </div>
                 <p className="text-blue-100 text-lg">#{invoiceData.invoiceNumber}</p>
-                <p className="text-blue-100">Date: {new Date(invoiceData.date).toLocaleDateString()}</p>
-                <p className="text-blue-100">Due: {new Date(invoiceData.dueDate).toLocaleDateString()}</p>
+                <p className="text-blue-100">Date: {new Date(invoiceData.date).toLocaleDateString('en-US')}</p>
+                <p className="text-blue-100">Due: {new Date(invoiceData.dueDate).toLocaleDateString('en-US')}</p>
               </div>
             </div>
           </div>
@@ -314,7 +320,7 @@ export default function InvoiceDetailPage() {
                       {invoiceData.case.status}
                     </span>
                   </p>
-                  <p><span className="font-medium">Start Date:</span> {new Date(invoiceData.case.startDate).toLocaleDateString()}</p>
+                  <p><span className="font-medium">Start Date:</span> {new Date(invoiceData.case.startDate).toLocaleDateString('en-US')}</p>
                 </div>
               </div>
             </div>
@@ -349,7 +355,7 @@ export default function InvoiceDetailPage() {
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
                           <div className="flex items-center">
                             <Calendar className="w-4 h-4 text-muted-foreground mr-2" />
-                            {new Date(entry.date).toLocaleDateString()}
+                            {new Date(entry.date).toLocaleDateString('en-US')}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-foreground">
@@ -368,7 +374,7 @@ export default function InvoiceDetailPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-foreground">
-                          ${entry.total.toLocaleString()}
+                          ${entry.total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                         </td>
                       </tr>
                     ))}
@@ -385,7 +391,7 @@ export default function InvoiceDetailPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Subtotal:</span>
                       <span className="text-sm font-medium text-foreground">
-                        ${invoiceData.subtotal.toLocaleString()}
+                        ${invoiceData.subtotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -396,7 +402,7 @@ export default function InvoiceDetailPage() {
                       <div className="flex justify-between items-center">
                         <span className="text-xl font-semibold text-foreground">Total:</span>
                         <span className="text-xl font-bold text-foreground">
-                          ${invoiceData.total.toLocaleString()}
+                          ${invoiceData.total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                         </span>
                       </div>
                     </div>
@@ -417,7 +423,7 @@ export default function InvoiceDetailPage() {
             {/* Footer */}
             <div className="mt-8 pt-6 border-t border-border text-center text-sm text-muted-foreground">
               <p>Thank you for your business!</p>
-              <p className="mt-1">This invoice was generated on {new Date().toLocaleDateString()}</p>
+              <p className="mt-1">This invoice was generated on {generationDate}</p>
             </div>
           </div>
         </div>

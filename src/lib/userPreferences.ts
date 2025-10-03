@@ -1,17 +1,19 @@
 import { supabase } from './supabaseClient';
+import type { UserPreference, UserPreferenceInsert, UserPreferenceUpdate } from '../../types/supabase';
 
 // TypeScript interfaces for user preferences
 export type SortField = string;
 export type SortDirection = 'asc' | 'desc';
 export type PageType = 'cases' | 'clients' | 'documents';
 
-export interface UserPreferences {
-  id: string;
-  user_id: string;
+// Re-export types from generated Supabase types
+export type { UserPreference, UserPreferenceInsert, UserPreferenceUpdate };
+
+// Legacy interface for backward compatibility
+export interface UserPreferences extends UserPreference {
   page: PageType;
   sort_field: SortField;
   sort_direction: SortDirection;
-  updated_at: string;
 }
 
 /**

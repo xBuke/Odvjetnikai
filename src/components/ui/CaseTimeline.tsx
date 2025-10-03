@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { CheckCircle, Circle, ChevronRight } from 'lucide-react';
+import type { CaseStatus } from '../../types/supabase';
 
-export type CaseStatus = 'Zaprimanje' | 'Priprema' | 'Ročište' | 'Presuda';
+// Re-export the generated type
+export type { CaseStatus };
 
 interface CaseTimelineProps {
   currentStatus: CaseStatus;

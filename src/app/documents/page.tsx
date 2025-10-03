@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { 
   Plus, 
@@ -25,6 +25,7 @@ import {
   deleteWithUserId,
   getUserOrThrow
 } from '@/lib/supabaseHelpers';
+import { getDocumentTypeOptions, getDocumentLabel, type DocumentType } from '@/lib/documentTypes';
 
 interface Case {
   id: string;
@@ -41,6 +42,7 @@ interface Document {
   uploaded_at: string;
   file_size?: number;
   file_type?: string;
+  type?: DocumentType;
   cases?: {
     title: string;
   };
@@ -55,7 +57,7 @@ interface Template {
 
 export default function DocumentsPage() {
   const { showToast } = useToast();
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -91,19 +93,19 @@ export default function DocumentsPage() {
   ];
 
   // Load cases from Supabase
-  const loadCases = async () => {
+  const loadCases = useCallback(async () => {
     if (!user) return;
     
     try {
-      const data = await selectWithUserId(supabase, 'cases', {}, '*, clients(name)');
+      const data = await selectWithUserId(supabase, 'cases', {}, '*, clients(name)') as unknown as Record<string, unknown>[];
 
       // Transform data to match Case interface
       const casesWithClient: Case[] = (data || []).map(caseItem => ({
-        id: caseItem.id,
-        title: caseItem.title,
-        clientName: caseItem.clients?.name || 'Unknown Client',
-        status: caseItem.status
-      }));
+        id: caseItem.id as string,
+        title: caseItem.title as string,
+        clientName: (caseItem.clients as Record<string, unknown>)?.name as string || 'Unknown Client',
+        status: caseItem.status as string
+      } as Case));
 
       setCases(casesWithClient);
     } catch (err) {
@@ -114,15 +116,15 @@ export default function DocumentsPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  };
+  }, [user, showToast]);
 
   // Load documents from Supabase
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const data = await selectWithUserId(supabase, 'documents', {}, '*, cases(title)');
+      const data = await selectWithUserId(supabase, 'documents', {}, '*, cases(title)') as unknown as Document[];
       setDocuments(data || []);
     } catch (err) {
       console.error('Error loading documents:', err);
@@ -134,7 +136,7 @@ export default function DocumentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   // Load data on component mount
   useEffect(() => {
@@ -144,7 +146,7 @@ export default function DocumentsPage() {
       };
       loadData();
     }
-  }, [user]);
+  }, [user, loadCases, loadDocuments]);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadFormData, setUploadFormData] = useState({
@@ -202,7 +204,7 @@ export default function DocumentsPage() {
       }
 
       // Get current user (will throw if not authenticated)
-      const currentUser = await getUserOrThrow(supabase);
+      await getUserOrThrow(supabase);
 
       // First, check if the storage bucket exists
       const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
@@ -240,7 +242,8 @@ export default function DocumentsPage() {
         file_url: publicUrl,
         case_id: uploadFormData.caseId ? parseInt(uploadFormData.caseId) : null,
         file_size: selectedFile.size,
-        file_type: selectedFile.type
+        file_type: selectedFile.type,
+        type: uploadFormData.type || null
       });
 
       // Reload documents and reset form
@@ -353,6 +356,12 @@ export default function DocumentsPage() {
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
+  // Map document type enum values to user-friendly labels
+  const getDocumentTypeLabel = (type?: DocumentType) => {
+    if (!type) return t('documents.unknownType');
+    return getDocumentLabel(type);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -408,6 +417,9 @@ export default function DocumentsPage() {
                     {t('clients.name')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {t('documents.documentType')}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     {t('documents.case')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -438,6 +450,11 @@ export default function DocumentsPage() {
                           </div>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                        {getDocumentTypeLabel(document.type)}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {document.cases?.title ? (
@@ -579,12 +596,11 @@ export default function DocumentsPage() {
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-input text-foreground"
                 >
                   <option value="">{t('documents.selectType')}</option>
-                  <option value="Contract">{t('documents.contract')}</option>
-                  <option value="Legal Document">{t('documents.legalDocument')}</option>
-                  <option value="Draft Document">{t('documents.draftDocument')}</option>
-                  <option value="Financial Document">{t('documents.financialDocument')}</option>
-                  <option value="Correspondence">{t('documents.correspondence')}</option>
-                  <option value="Evidence">{t('documents.evidence')}</option>
+                  {getDocumentTypeOptions().map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </div>
 

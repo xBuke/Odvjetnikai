@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft,
@@ -13,13 +13,8 @@ import {
   Share2,
   Edit
 } from 'lucide-react';
+import { getDocumentLabel, type DocumentType } from '@/lib/documentTypes';
 
-interface Case {
-  id: string;
-  title: string;
-  clientName: string;
-  status: 'Open' | 'In Progress' | 'Closed';
-}
 
 interface Document {
   id: string;
@@ -28,7 +23,7 @@ interface Document {
   caseTitle: string | null;
   uploadedDate: string;
   size: string;
-  type: string;
+  type: DocumentType;
   description?: string;
   content?: string;
 }
@@ -40,7 +35,7 @@ export default function DocumentDetailPage() {
 
 
   // Mock documents data with additional details
-  const mockDocuments: Document[] = [
+  const mockDocuments: Document[] = useMemo(() => [
     {
       id: 'doc-1-uuid-1234-5678-9abc-def012345678',
       name: 'Ugovor o suradnji - Zagrebačka banka.pdf',
@@ -48,7 +43,7 @@ export default function DocumentDetailPage() {
       caseTitle: 'Horvat protiv Zagrebačke banke - Spor ugovora',
       uploadedDate: '2024-12-01',
       size: '2.4 MB',
-      type: 'Ugovor',
+      type: 'ugovor',
       description: 'Licencni ugovor za softver između Horvata i Zagrebačke banke. Sadrži uvjete i odredbe za korištenje vlasničkog softvera.',
       content: `UGOVOR O SUDRADNJI
 
@@ -87,7 +82,7 @@ Datum: _______________        Datum: _______________`
       caseTitle: 'Babić - Osnivanje tvrtke',
       uploadedDate: '2024-11-28',
       size: '1.8 MB',
-      type: 'Pravni dokument',
+      type: 'pravni_dokument',
       description: 'Zahtjev za dozvolu za obavljanje djelatnosti za Babić d.o.o. Uključuje sve potrebne obrasce i prateću dokumentaciju.',
       content: `ZAHTJEV ZA DOZVOLU ZA OBAVLJANJE DJELATNOSTI
 
@@ -127,7 +122,7 @@ Datum: _________________`
       caseTitle: null,
       uploadedDate: '2024-11-25',
       size: '856 KB',
-      type: 'Nacrt dokumenta',
+      type: 'nacrt_dokumenta',
       description: 'Nacrt radnog ugovora za izvršnu poziciju. Sadrži standardne uvjete i odredbe za zapošljavanje.',
       content: `NACRT RADNOG UGOVORA
 
@@ -162,7 +157,7 @@ Zaposlenik pristaje ne konkurirati s Tvrtkom u razdoblju od 12 mjeseci nakon ras
       caseTitle: 'Novak - Trgovina nekretninama',
       uploadedDate: '2024-11-20',
       size: '3.2 MB',
-      type: 'Financijski dokument',
+      type: 'financijski_dokument',
       description: 'Godišnji financijski izvještaj za Novak Nekretnine. Uključuje bilancu, račun dobiti i gubitka te izvještaj o novčanom toku.',
       content: `FINANCIAL STATEMENTS 2024
 GARCIA REAL ESTATE
@@ -214,7 +209,7 @@ Total Operating Expenses: $1,000,000
 
 Net Income: $400,000`
     }
-  ];
+  ], []);
 
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
@@ -251,17 +246,26 @@ Net Income: $400,000`
     });
   };
 
+  // Map document type enum values to user-friendly labels
+  const getDocumentTypeLabel = (type: DocumentType) => {
+    return getDocumentLabel(type);
+  };
+
   // Get file icon based on type
-  const getFileIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'contract':
+  const getFileIcon = (type: DocumentType) => {
+    switch (type) {
+      case 'ugovor':
         return <FileText className="w-8 h-8 text-blue-600" />;
-      case 'legal document':
+      case 'pravni_dokument':
         return <FileText className="w-8 h-8 text-green-600" />;
-      case 'draft document':
+      case 'nacrt_dokumenta':
         return <FileText className="w-8 h-8 text-yellow-600" />;
-      case 'financial document':
+      case 'financijski_dokument':
         return <FileText className="w-8 h-8 text-purple-600" />;
+      case 'korespondencija':
+        return <FileText className="w-8 h-8 text-orange-600" />;
+      case 'dokazni_materijal':
+        return <FileText className="w-8 h-8 text-red-600" />;
       default:
         return <FileText className="w-8 h-8 text-gray-600" />;
     }
@@ -334,7 +338,7 @@ Net Income: $400,000`
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
               <div className="flex items-center">
                 <File className="w-4 h-4 mr-2 text-muted-foreground" />
-                <span>{document.type}</span>
+                <span>{getDocumentTypeLabel(document.type)}</span>
               </div>
               <div className="flex items-center">
                 <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />

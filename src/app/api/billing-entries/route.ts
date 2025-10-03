@@ -4,6 +4,9 @@ import { formatDbErrorToUserMessage } from '@/lib/subscription';
 import { createBillingEntrySchema, updateBillingEntrySchema, validateRequestBody } from '@/lib/validation';
 import { getUserFromRequest, handleApiError, createSuccessResponse, validateRequestMethod } from '@/lib/api-helpers';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     validateRequestMethod(request, ['POST']);

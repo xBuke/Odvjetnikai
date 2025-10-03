@@ -2,16 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-// Initialize Stripe with secret key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
-});
-
-// Get webhook secret from environment variables
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if Stripe secret key is available
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return NextResponse.json(
+        { error: 'Stripe secret key not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Initialize Stripe
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-09-30.clover',
+    });
+
+    // Get webhook secret from environment variables
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
     // Get the raw body and signature from the request
     const body = await request.text();
     const signature = request.headers.get('stripe-signature');

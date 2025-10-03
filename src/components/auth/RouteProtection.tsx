@@ -14,7 +14,7 @@ export default function RouteProtection({ children }: RouteProtectionProps) {
   const pathname = usePathname();
 
   // Public routes that don't require authentication
-  const publicRoutes = useMemo(() => ['/login', '/register', '/pricing', '/subscription-inactive'], []);
+  const publicRoutes = useMemo(() => ['/login', '/pricing', '/subscription-inactive'], []);
   const isPublicRoute = publicRoutes.includes(pathname);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function RouteProtection({ children }: RouteProtectionProps) {
       // User is not authenticated and trying to access protected route
       router.push('/login');
     } else if (user && isPublicRoute && pathname !== '/pricing' && pathname !== '/subscription-inactive') {
-      // User is authenticated but trying to access login/register
+      // User is authenticated but trying to access login
       router.push('/');
     } else if (user && !isPublicRoute && subscriptionStatus !== 'active') {
       // User is authenticated but subscription is not active

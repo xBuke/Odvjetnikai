@@ -19,7 +19,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   };
 
   // Public routes that don't need the main layout
-  const publicRoutes = useMemo(() => ['/login', '/register'], []);
+  const publicRoutes = useMemo(() => ['/login'], []);
   const isPublicRoute = publicRoutes.includes(pathname);
 
   // Generate breadcrumb items based on current path
@@ -49,7 +49,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     return items;
   }, [pathname]);
 
-  // For public routes (login/register), render without sidebar and topbar
+  // For public routes (login), render without sidebar and topbar
   if (isPublicRoute) {
     return (
       <div className="min-h-screen bg-background text-foreground">

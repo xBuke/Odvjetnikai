@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { signIn } = useAuth();
+  const { signIn, checkSubscriptionStatus } = useAuth();
   const router = useRouter();
   
   // Safe access to language context
@@ -44,7 +44,15 @@ export default function LoginPage() {
       if (error) {
         setError(error.message);
       } else {
-        router.push('/');
+        // Check subscription status after successful login
+        const subscriptionStatus = await checkSubscriptionStatus();
+        
+        if (subscriptionStatus === 'active') {
+          router.push('/');
+        } else {
+          // Redirect to pricing page with message for inactive users
+          router.push('/pricing?message=subscription_inactive');
+        }
       }
     } catch {
       setError(t('auth.unexpectedError'));

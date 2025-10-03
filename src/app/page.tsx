@@ -11,8 +11,29 @@ import {
   XCircle
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function Dashboard() {
+  const searchParams = useSearchParams();
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
+  // Check for successful checkout session
+  useEffect(() => {
+    const sessionId = searchParams.get('session_id');
+    if (sessionId) {
+      setShowSuccessMessage(true);
+      // Remove the session_id from URL after showing success message
+      const url = new URL(window.location.href);
+      url.searchParams.delete('session_id');
+      window.history.replaceState({}, '', url.toString());
+      
+      // Hide success message after 5 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 5000);
+    }
+  }, [searchParams]);
 
   // Safe access to language context
   let t: (key: string) => string;
@@ -202,6 +223,23 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
+            <div>
+              <h3 className="text-sm font-medium text-green-800">
+                Subscription Activated Successfully!
+              </h3>
+              <p className="text-sm text-green-700 mt-1">
+                Welcome to Law Firm SaaS! Your subscription is now active and you have access to all features.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Welcome Section */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 lg:p-6">
         <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground mb-1 sm:mb-2">{t('dashboard.title')}</h2>

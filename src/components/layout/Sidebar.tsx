@@ -9,7 +9,8 @@ import {
   Calendar, 
   FolderOpen, 
   CreditCard,
-  X
+  X,
+  Crown
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -25,6 +26,7 @@ const navigationItems = [
   { name: 'nav.calendar', href: '/calendar', icon: Calendar },
   { name: 'nav.documents', href: '/documents', icon: FolderOpen },
   { name: 'nav.billing', href: '/billing', icon: CreditCard },
+  { name: 'nav.pricing', href: '/pricing', icon: Crown },
 ];
 
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
@@ -44,6 +46,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       'nav.calendar': 'Kalendar',
       'nav.documents': 'Dokumenti',
       'nav.billing': 'Naplata',
+      'nav.pricing': 'Cijene',
     };
     t = (key: string) => fallbackTranslations[key] || key;
   }

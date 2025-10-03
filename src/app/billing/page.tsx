@@ -42,6 +42,7 @@ interface Case {
   title: string;
   client_id: string;
   status: 'Open' | 'In Progress' | 'Closed';
+  case_status: 'Zaprimanje' | 'Priprema' | 'Ročište' | 'Presuda';
   notes: string;
   created_at: string;
   readonly updated_at?: string; // Read-only, automatically managed by database trigger

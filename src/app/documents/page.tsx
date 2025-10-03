@@ -32,12 +32,15 @@ import {
 import { getDocumentTypeOptions, getDocumentLabel, type DocumentType } from '@/lib/documentTypes';
 import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
 import { validateFile, validateDocumentType, getFileValidationErrorMessage } from '@/lib/fileValidation';
+import { getContractTemplates } from '@/lib/contractTemplates';
+import ContractGenerator from '@/components/contracts/ContractGenerator';
 
 interface Case {
   id: string;
   title: string;
   clientName: string;
   status: 'Open' | 'In Progress' | 'Closed';
+  case_status: 'Zaprimanje' | 'Priprema' | 'Ročište' | 'Presuda';
 }
 
 interface Document {
@@ -93,21 +96,16 @@ export default function DocumentsPage() {
   // Use shared user preferences utility
   const { loadPreferences, savePreferences } = useUserPreferences('documents', showToast);
 
-  // Mock templates data
-  const mockTemplates: Template[] = [
-    {
-      id: 'template-1-uuid-1234-5678-9abc-def012345678',
-      name: 'Ugovor',
-      description: 'Standardni predložak pravnog ugovora',
-      category: 'Poslovno'
-    },
-    {
-      id: 'template-2-uuid-2345-6789-abcd-ef0123456789',
-      name: 'Punomoć',
-      description: 'Predložak dokumenta punomoći',
-      category: 'Pravno'
-    }
-  ];
+  // Contract templates data
+  const contractTemplates = getContractTemplates();
+  
+  // Convert contract templates to Template interface for compatibility
+  const templates: Template[] = contractTemplates.map(template => ({
+    id: template.id,
+    name: template.name,
+    description: template.description,
+    category: template.category
+  }));
 
   // Load cases from Supabase
   const loadCases = useCallback(async () => {
@@ -230,6 +228,7 @@ export default function DocumentsPage() {
   }, [preferencesLoaded, sortField, sortDirection, user]); // Remove loadDocuments from deps to prevent infinite loop
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isContractGeneratorOpen, setIsContractGeneratorOpen] = useState(false);
   const [uploadFormData, setUploadFormData] = useState({
     name: '',
     caseId: '',
@@ -472,6 +471,54 @@ export default function DocumentsPage() {
     setIsUploadModalOpen(false);
     setUploadFormData({ name: '', caseId: '', type: '' });
     setSelectedFile(null);
+  };
+
+  // Handle contract generation
+  const handleContractGenerated = async (contractContent: string, contractName: string) => {
+    try {
+      setSubmitting(true);
+      setError(null);
+
+      // Create a blob from the contract content
+      const blob = new Blob([contractContent], { type: 'text/plain;charset=utf-8' });
+      const fileName = `${contractName}.txt`;
+
+      // Upload the contract as a document
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(`docs/${Date.now()}_${fileName}`, blob);
+
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('documents')
+        .getPublicUrl(`docs/${Date.now()}_${fileName}`);
+
+      // Insert metadata into documents table
+      await insertWithUserId(supabase, 'documents', {
+        name: contractName,
+        file_url: publicUrl,
+        case_id: null, // Can be linked to a case later
+        file_size: blob.size,
+        file_type: 'text/plain',
+        type: 'ugovor'
+      });
+
+      // Reload documents
+      await loadDocuments();
+      showToast('Ugovor uspješno spremljen kao dokument', 'success');
+    } catch (err) {
+      console.error('Error saving contract:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Greška pri spremanju ugovora';
+      setError(errorMessage);
+      showToast(errorMessage, 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Format file size
@@ -727,7 +774,7 @@ export default function DocumentsPage() {
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {mockTemplates.map((template) => (
+            {templates.map((template) => (
               <div key={template.id} className="border border-border rounded-lg p-4 hover:border-primary/50 transition-colors duration-200">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center">
@@ -742,8 +789,12 @@ export default function DocumentsPage() {
                       </span>
                     </div>
                   </div>
-                  <button className="text-primary hover:text-primary/80 p-1 rounded hover:bg-primary/10 transition-colors duration-200">
-                    <Download className="w-4 h-4" />
+                  <button 
+                    onClick={() => setIsContractGeneratorOpen(true)}
+                    className="text-primary hover:text-primary/80 p-1 rounded hover:bg-primary/10 transition-colors duration-200"
+                    title="Generiraj ugovor"
+                  >
+                    <FileText className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -870,6 +921,17 @@ export default function DocumentsPage() {
           </div>
         </div>
       )}
+
+      {/* Contract Generator Modal */}
+      <ContractGenerator
+        isOpen={isContractGeneratorOpen}
+        onClose={() => setIsContractGeneratorOpen(false)}
+        onContractGenerated={handleContractGenerated}
+        lawFirmInfo={{
+          name: 'Odvjetnički ured', // This could be made configurable
+          address: 'Adresa odvjetničkog ureda' // This could be made configurable
+        }}
+      />
     </div>
   );
 }

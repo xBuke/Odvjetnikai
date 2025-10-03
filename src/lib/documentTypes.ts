@@ -1,5 +1,7 @@
 export const DOCUMENT_TYPES = {
   ugovor: "Ugovor",
+  punomoc: "Punomoć",
+  tuzba: "Tužba",
   pravni_dokument: "Pravni dokument",
   nacrt_dokumenta: "Nacrt dokumenta",
   financijski_dokument: "Financijski dokument",

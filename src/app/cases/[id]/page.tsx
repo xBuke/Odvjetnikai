@@ -23,7 +23,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { selectSingleWithUserId } from '@/lib/supabaseHelpers';
+import { selectSingleWithUserId, updateWithUserId } from '@/lib/supabaseHelpers';
+import CaseTimeline, { CaseStatus } from '@/components/ui/CaseTimeline';
 
 
 interface Case {
@@ -31,6 +32,7 @@ interface Case {
   title: string;
   client_id: string;
   status: 'Open' | 'In Progress' | 'Closed';
+  case_status: 'Zaprimanje' | 'Priprema' | 'Ročište' | 'Presuda';
   notes: string;
   created_at: string;
   readonly updated_at?: string; // Read-only, automatically managed by database trigger
@@ -65,6 +67,7 @@ export default function CaseDetailPage() {
     title: '',
     description: ''
   });
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
 
   // Mock timeline events
@@ -202,6 +205,43 @@ export default function CaseDetailPage() {
     setTimelineEvents(prev => [newTimelineEvent, ...prev]);
     setNewEvent({ type: 'note', title: '', description: '' });
     setIsAddEventModalOpen(false);
+  };
+
+  const handleStatusChange = async (newStatus: CaseStatus) => {
+    if (!caseData) return;
+    
+    try {
+      setUpdatingStatus(true);
+      
+      // Update case_status in Supabase
+      await updateWithUserId(supabase, 'cases', 'id', caseData.id, {
+        case_status: newStatus
+      });
+
+      // Update local state
+      setCaseData(prev => prev ? { ...prev, case_status: newStatus } : null);
+      
+      // Add status change event to timeline
+      const now = new Date();
+      const statusChangeEvent: TimelineEvent = {
+        id: Date.now().toString(),
+        type: 'status_change',
+        title: 'Status promijenjen',
+        description: `Status predmeta promijenjen na: ${newStatus}`,
+        date: now.toISOString().split('T')[0],
+        time: now.toTimeString().split(' ')[0].substring(0, 5),
+        icon: CheckCircle,
+        iconColor: 'text-yellow-600'
+      };
+
+      setTimelineEvents(prev => [statusChangeEvent, ...prev]);
+      
+    } catch (err) {
+      console.error('Error updating case status:', err);
+      setError('Greška pri ažuriranju statusa predmeta. Molimo pokušajte ponovno.');
+    } finally {
+      setUpdatingStatus(false);
+    }
   };
 
   if (loading) {
@@ -372,6 +412,15 @@ export default function CaseDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Case Timeline */}
+      {caseData && (
+        <CaseTimeline
+          currentStatus={caseData.case_status || 'Zaprimanje'}
+          onStatusChange={handleStatusChange}
+          disabled={updatingStatus}
+        />
+      )}
 
       {/* Related Links */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">

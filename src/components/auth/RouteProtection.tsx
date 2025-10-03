@@ -9,12 +9,12 @@ interface RouteProtectionProps {
 }
 
 export default function RouteProtection({ children }: RouteProtectionProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, subscriptionStatus } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   // Public routes that don't require authentication
-  const publicRoutes = useMemo(() => ['/login', '/register'], []);
+  const publicRoutes = useMemo(() => ['/login', '/register', '/pricing', '/subscription-inactive'], []);
   const isPublicRoute = publicRoutes.includes(pathname);
 
   useEffect(() => {
@@ -23,11 +23,14 @@ export default function RouteProtection({ children }: RouteProtectionProps) {
     if (!user && !isPublicRoute) {
       // User is not authenticated and trying to access protected route
       router.push('/login');
-    } else if (user && isPublicRoute) {
+    } else if (user && isPublicRoute && pathname !== '/pricing' && pathname !== '/subscription-inactive') {
       // User is authenticated but trying to access login/register
       router.push('/');
+    } else if (user && !isPublicRoute && subscriptionStatus !== 'active') {
+      // User is authenticated but subscription is not active
+      router.push('/subscription-inactive');
     }
-  }, [user, loading, isPublicRoute, router, pathname]);
+  }, [user, loading, subscriptionStatus, isPublicRoute, router, pathname]);
 
   // Show loading state while checking authentication
   if (loading) {
@@ -46,8 +49,13 @@ export default function RouteProtection({ children }: RouteProtectionProps) {
     return null;
   }
 
-  // Don't render auth pages if user is already authenticated
-  if (user && isPublicRoute) {
+  // Don't render auth pages if user is already authenticated (except pricing and subscription-inactive)
+  if (user && isPublicRoute && pathname !== '/pricing' && pathname !== '/subscription-inactive') {
+    return null;
+  }
+
+  // Don't render protected content if user doesn't have active subscription
+  if (user && !isPublicRoute && subscriptionStatus !== 'active') {
     return null;
   }
 

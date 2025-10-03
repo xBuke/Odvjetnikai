@@ -8,6 +8,8 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'document_type') THEN
         CREATE TYPE document_type AS ENUM (
             'ugovor',
+            'punomoc',
+            'tuzba',
             'pravni_dokument', 
             'nacrt_dokumenta',
             'financijski_dokument',

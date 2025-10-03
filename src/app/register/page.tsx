@@ -59,24 +59,26 @@ export default function RegisterPage() {
       <div className="max-w-md w-full space-y-6">
         {/* App Logo and Title */}
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-gradient-to-br from-gold to-gold-dark rounded-2xl flex items-center justify-center shadow-lg">
-            <Scale className="h-8 w-8 text-navy" />
+          <div className="mx-auto h-20 w-20 bg-gradient-to-br from-gold to-gold-dark rounded-3xl flex items-center justify-center shadow-xl border-4 border-white dark:border-slate-800">
+            <Scale className="h-10 w-10 text-navy" />
           </div>
-          <h1 className="mt-4 text-3xl font-bold text-foreground font-serif">
+          <h1 className="mt-6 text-4xl font-bold text-foreground font-serif tracking-tight">
             OdvjetnikAI
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Pridružite se našoj platformi
+          <p className="mt-3 text-base text-muted-foreground font-medium">
+            Profesionalna pravna platforma
           </p>
         </div>
 
         {/* Auth Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden backdrop-blur-sm">
           {/* Header */}
-          <div className="bg-gradient-to-r from-gold/10 to-gold-light/10 px-8 py-6 border-b border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-center space-x-2">
-              <UserPlus className="w-5 h-5 text-gold" />
-              <h2 className="text-xl font-semibold text-foreground">Registracija</h2>
+          <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600 px-8 py-8 border-b border-slate-200 dark:border-slate-600">
+            <div className="flex items-center justify-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-gold to-gold-dark rounded-full flex items-center justify-center">
+                <UserPlus className="w-4 h-4 text-navy" />
+              </div>
+              <h2 className="text-2xl font-bold text-foreground font-serif">Registracija</h2>
             </div>
           </div>
 
@@ -141,17 +143,18 @@ export default function RegisterPage() {
               </div>
 
               {/* Trial Info */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-6">
                 <div className="flex items-start">
-                  <div className="w-8 h-8 bg-gradient-to-br from-gold to-gold-dark rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <CreditCard className="w-4 h-4 text-navy" />
+                  <div className="w-10 h-10 bg-gradient-to-br from-gold to-gold-dark rounded-full flex items-center justify-center mr-4 flex-shrink-0 shadow-lg">
+                    <Scale className="w-5 h-5 text-navy" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                    <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-2">
                       Besplatna 7-dnevna proba
                     </h4>
-                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                      Započnite odmah s besplatnom 7-dnevnom probom. Nakon isteka probnog razdoblja, automatski će se naplatiti iznos od 147 € mjesečno, osim ako se pretplata ne otkaže.
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                      Započnite odmah s potpuno besplatnom 7-dnevnom probom. Nema skrivenih troškova, nema potrebe za karticom. 
+                      Nakon isteka probnog razdoblja, možete odabrati plan koji vam odgovara.
                     </p>
                   </div>
                 </div>
@@ -168,7 +171,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-navy bg-gradient-to-r from-gold to-gold-light hover:from-gold-light hover:to-gold-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full flex justify-center items-center py-4 px-6 border border-transparent rounded-2xl shadow-lg text-base font-bold text-navy bg-gradient-to-r from-gold to-gold-light hover:from-gold-light hover:to-gold-dark focus:outline-none focus:ring-4 focus:ring-gold/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] hover:shadow-xl"
               >
                 {loading ? (
                   <>
@@ -183,8 +186,22 @@ export default function RegisterPage() {
                 )}
               </button>
 
-              <p className="text-xs text-muted-foreground text-center">
-                Registracijom se slažete s našim uvjetima korištenja i politikom privatnosti.
+              <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                Registracijom se slažete s našim{' '}
+                <button
+                  onClick={() => router.push('/terms')}
+                  className="text-gold hover:text-gold-dark underline transition-colors"
+                >
+                  uvjetima korištenja
+                </button>
+                {' '}i{' '}
+                <button
+                  onClick={() => router.push('/privacy')}
+                  className="text-gold hover:text-gold-dark underline transition-colors"
+                >
+                  politikom privatnosti
+                </button>
+                .
               </p>
             </form>
 

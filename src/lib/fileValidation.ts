@@ -41,7 +41,7 @@ export function validateFile(file: File): FileValidationResult {
   }
 
   // Check MIME type
-  if (!ALLOWED_MIME_TYPES.includes(file.type as any)) {
+  if (!ALLOWED_MIME_TYPES.includes(file.type as typeof ALLOWED_MIME_TYPES[number])) {
     return {
       isValid: false,
       error: `File type "${file.type}" is not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`
@@ -50,7 +50,7 @@ export function validateFile(file: File): FileValidationResult {
 
   // Check file extension as additional validation
   const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-  if (!ALLOWED_EXTENSIONS.includes(fileExtension as any)) {
+  if (!ALLOWED_EXTENSIONS.includes(fileExtension as typeof ALLOWED_EXTENSIONS[number])) {
     return {
       isValid: false,
       error: `File extension "${fileExtension}" is not allowed. Allowed extensions: ${ALLOWED_EXTENSIONS.join(', ')}`

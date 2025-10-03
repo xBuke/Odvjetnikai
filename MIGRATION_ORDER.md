@@ -19,8 +19,12 @@ This document outlines the correct order for running database migrations to ensu
 ### 3. Triggers and Functions (Run After Table Creation)
 - **`add-updated-at-triggers.sql`** - Adds automatic updated_at triggers (now idempotent)
 
-### 4. Storage and Buckets (Run Last)
+### 4. Storage and Buckets
 - **`supabase/migrations/20250103_add_documents_bucket.sql`** - Creates storage bucket for documents
+
+### 5. Trial and Subscription Support (Run After Core Setup)
+- **`supabase/migrations/20250112_add_trial_fields_to_profiles.sql`** - Adds trial_expires_at and trial_limit columns to profiles
+- **`supabase/migrations/20250112_update_rls_for_trial_users.sql`** - Updates RLS policies to support trial users
 
 ## Standalone Migrations
 
@@ -47,6 +51,8 @@ These can be run independently if needed:
 3. add-user-id-to-cases.sql
 4. add-updated-at-triggers.sql
 5. supabase/migrations/20250103_add_documents_bucket.sql
+6. supabase/migrations/20250112_add_trial_fields_to_profiles.sql
+7. supabase/migrations/20250112_update_rls_for_trial_users.sql
 ```
 
 ### Individual Table Setup

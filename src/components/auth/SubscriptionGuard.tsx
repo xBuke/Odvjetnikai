@@ -57,8 +57,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   }
 
   // Redirect to subscription inactive page if user doesn't have active subscription
-  // Exception: Demo users can access the app even with inactive subscription
-  if (user && subscriptionStatus !== 'active' && user.email !== 'demo@odvjetnikai.com') {
+  if (user && subscriptionStatus !== 'active') {
     router.push('/subscription-inactive');
     return null;
   }

@@ -32,6 +32,8 @@ import {
   deleteWithUserId 
 } from '@/lib/supabaseHelpers';
 import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
+import TrialBanner from '@/components/billing/TrialBanner';
+import { canCreateEntity } from '@/lib/ui-limit';
 
 interface Client {
   id: string;
@@ -69,7 +71,7 @@ type CasesSortField = 'title' | 'status' | 'created_at' | 'updated_at' | 'client
 export default function CasesPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { } = useAuth();
+  const { profile } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -128,7 +130,7 @@ export default function CasesPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  }, []); // Remove showToast from deps to prevent infinite loop
+  }, [showToast]);
 
 
   // Load cases from Supabase with client information and sorting
@@ -197,7 +199,7 @@ export default function CasesPage() {
     } finally {
       setLoading(false);
     }
-  }, [sortField, sortDirection]); // Remove showToast from deps to prevent infinite loop
+  }, [sortField, sortDirection, showToast]);
 
   // Get status color based on status
   const getStatusColor = (status: string): 'blue' | 'yellow' | 'green' => {
@@ -253,14 +255,14 @@ export default function CasesPage() {
       await Promise.all([loadClients(), loadCases()]);
     };
     loadData();
-  }, []); // Empty dependency array to run only once on mount
+  }, [loadCases, loadClients, loadUserPreferences]);
 
   // Load cases when preferences are loaded and sorting changes
   useEffect(() => {
     if (preferencesLoaded) {
       loadCases();
     }
-  }, [preferencesLoaded, sortField, sortDirection]); // Remove loadCases from deps to prevent infinite loop
+  }, [preferencesLoaded, sortField, sortDirection, loadCases]);
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -279,6 +281,15 @@ export default function CasesPage() {
       setSubmitting(true);
       setError(null);
 
+      // Check trial limits for new cases
+      if (!editingCase && profile) {
+        const limitCheck = canCreateEntity(profile, cases.length);
+        if (!limitCheck.ok) {
+          showToast(limitCheck.reason || 'Greška pri kreiranju predmeta', 'error');
+          setSubmitting(false);
+          return;
+        }
+      }
 
       if (editingCase) {
         // Update existing case - only send fields that user can edit
@@ -296,7 +307,7 @@ export default function CasesPage() {
           }
         );
 
-        console.log('Case updated successfully');
+        // Case updated successfully
         showToast('✔ Predmet uspješno ažuriran', 'success');
         
         // Auto-close modal and reset form after successful update
@@ -307,14 +318,14 @@ export default function CasesPage() {
         return; // Exit early to prevent duplicate form reset
       } else {
         // Add new case
-        const data = await insertAndReturnWithUserId(supabase, 'cases', {
+        await insertAndReturnWithUserId(supabase, 'cases', {
           title: formData.title,
           client_id: formData.client_id,
           status: formData.status,
           notes: formData.notes
         });
 
-        console.log('Case created successfully:', data);
+        // Case created successfully
         showToast('✔ Predmet uspješno dodan', 'success');
 
         // Redirect to cases list instead of detail page
@@ -419,6 +430,9 @@ export default function CasesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Trial Banner */}
+      {profile && <TrialBanner profile={profile} />}
+      
       {/* Header */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
@@ -479,6 +493,11 @@ export default function CasesPage() {
           </div>
           <div className="text-sm text-muted-foreground">
             {cases.length} predmeta
+            {profile && profile.subscription_status === 'trial' && (
+              <span className="ml-2 text-amber-600 dark:text-amber-400">
+                ({cases.length}/20 iskorišteno tijekom triala)
+              </span>
+            )}
           </div>
         </div>
       </div>

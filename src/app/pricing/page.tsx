@@ -207,7 +207,7 @@ export default function PricingPage() {
               </div>
 
               <div className="space-y-4">
-                <h4 className="font-semibold text-gray-900 mb-4">What's included:</h4>
+                <h4 className="font-semibold text-gray-900 mb-4">What&apos;s included:</h4>
                 {plan.features.map((feature, index) => (
                   <div key={index} className="flex items-start">
                     <Check className="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
@@ -231,7 +231,7 @@ export default function PricingPage() {
                 Can I cancel my subscription anytime?
               </h3>
               <p className="text-gray-600">
-                Yes, you can cancel your subscription at any time. You'll continue to have access 
+                Yes, you can cancel your subscription at any time. You&apos;ll continue to have access 
                 to your data until the end of your current billing period.
               </p>
             </div>

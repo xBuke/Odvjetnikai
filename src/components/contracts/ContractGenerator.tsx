@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { 
   getContractTemplates, 
-  getContractTemplate,
   generateContract, 
   validateContractData,
   formatDateForContract,
@@ -23,7 +22,6 @@ import {
 } from '@/lib/contractTemplates';
 import { generateContractPDF, formatContentForPDF } from '@/lib/pdfGenerator';
 import { useToast } from '@/components/ui/Toast';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/lib/supabaseClient';
 import jsPDF from 'jspdf';
 
@@ -51,14 +49,7 @@ export default function ContractGenerator({
 }: ContractGeneratorProps) {
   const { showToast } = useToast();
   
-  // Safe access to language context
-  let t: (key: string) => string;
-  try {
-    const languageContext = useLanguage();
-    t = languageContext.t;
-  } catch {
-    t = (key: string) => key;
-  }
+  // Language context is not used in this component
 
   const [templates] = useState<ContractTemplate[]>(getContractTemplates());
   const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);

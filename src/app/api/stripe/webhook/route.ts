@@ -63,7 +63,9 @@ export async function POST(request: NextRequest) {
       }
       
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Unhandled event type: ${event.type}`);
+        }
     }
 
     return NextResponse.json({ received: true });
@@ -104,7 +106,9 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       await sendWelcomeEmail(userEmail, userId);
     }
     
-    console.log(`Subscription activated for user ${userId}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Subscription activated for user ${userId}`);
+    }
   } catch (error) {
     console.error('Error handling checkout session completed:', error);
   }
@@ -131,7 +135,9 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
       return;
     }
 
-    console.log(`Subscription created for user ${userId}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Subscription created for user ${userId}`);
+    }
   } catch (error) {
     console.error('Error handling subscription created:', error);
   }
@@ -160,7 +166,9 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       return;
     }
 
-    console.log(`Subscription updated for user ${userId}: ${status}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Subscription updated for user ${userId}: ${status}`);
+    }
   } catch (error) {
     console.error('Error handling subscription updated:', error);
   }
@@ -187,7 +195,9 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       return;
     }
 
-    console.log(`Subscription cancelled for user ${userId}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Subscription cancelled for user ${userId}`);
+    }
   } catch (error) {
     console.error('Error handling subscription deleted:', error);
   }
@@ -223,7 +233,9 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
       return;
     }
 
-    console.log(`Invoice payment succeeded for user ${userId}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Invoice payment succeeded for user ${userId}`);
+    }
   } catch (error) {
     console.error('Error handling invoice payment succeeded:', error);
   }
@@ -259,7 +271,9 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
       return;
     }
 
-    console.log(`Invoice payment failed for user ${userId}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Invoice payment failed for user ${userId}`);
+    }
   } catch (error) {
     console.error('Error handling invoice payment failed:', error);
   }
@@ -310,13 +324,19 @@ async function sendWelcomeEmail(userEmail: string, userId: string) {
       `
     };
 
-    console.log('Welcome email would be sent:', emailContent);
-    
     // TODO: Implement actual email sending service
     // Example with a hypothetical email service:
     // await emailService.send(emailContent);
     
+    // For now, we'll just log that the email would be sent (remove in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Welcome email would be sent:', emailContent);
+    }
+    
   } catch (error) {
-    console.error('Error sending welcome email:', error);
+    // Log error for debugging (consider using proper logging service in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error sending welcome email:', error);
+    }
   }
 }

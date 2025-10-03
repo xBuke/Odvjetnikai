@@ -31,6 +31,8 @@ import {
   deleteWithUserId 
 } from '@/lib/supabaseHelpers';
 import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
+import TrialBanner from '@/components/billing/TrialBanner';
+import { canCreateEntity } from '@/lib/ui-limit';
 
 interface Client {
   id: string;
@@ -49,7 +51,7 @@ type ClientsSortField = 'name' | 'email' | 'phone' | 'created_at' | 'updated_at'
 export default function ClientsPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { } = useAuth();
+  const { profile } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -120,7 +122,7 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [sortField, sortDirection]); // Remove showToast from deps to prevent infinite loop
+  }, [sortField, sortDirection, showToast]);
 
   // Load data on component mount
   useEffect(() => {
@@ -130,14 +132,14 @@ export default function ClientsPage() {
       await loadClients();
     };
     loadData();
-  }, []); // Empty dependency array to run only once on mount
+  }, [loadClients, loadUserPreferences]);
 
   // Load clients when preferences are loaded and sorting changes
   useEffect(() => {
     if (preferencesLoaded) {
       loadClients();
     }
-  }, [preferencesLoaded, sortField, sortDirection]); // Remove loadClients from deps to prevent infinite loop
+  }, [preferencesLoaded, sortField, sortDirection, loadClients]);
 
   // Handle sorting
   const handleSort = async (field: ClientsSortField) => {
@@ -204,6 +206,15 @@ export default function ClientsPage() {
       setSubmitting(true);
       setError(null);
 
+      // Check trial limits for new clients
+      if (!editingClient && profile) {
+        const limitCheck = canCreateEntity(profile, clients.length);
+        if (!limitCheck.ok) {
+          showToast(limitCheck.reason || 'Greška pri kreiranju klijenta', 'error');
+          setSubmitting(false);
+          return;
+        }
+      }
 
       // Validate form data
       if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim() || !formData.oib.trim()) {
@@ -235,7 +246,7 @@ export default function ClientsPage() {
           throw new Error('Klijent nije pronađen');
         }
 
-        console.log('Client updated successfully:', data);
+        // Client updated successfully
         showToast('✔ Klijent uspješno ažuriran', 'success');
         
         // Auto-close modal and reset form after successful update
@@ -246,7 +257,7 @@ export default function ClientsPage() {
         return; // Exit early to prevent duplicate form reset
       } else {
         // Add new client
-        const data = await insertAndReturnWithUserId(supabase, 'clients', {
+        await insertAndReturnWithUserId(supabase, 'clients', {
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
@@ -254,7 +265,7 @@ export default function ClientsPage() {
           notes: formData.notes
         });
 
-        console.log('Client created successfully:', data);
+        // Client created successfully
         showToast('✔ Klijent uspješno dodan', 'success');
       }
 
@@ -302,7 +313,7 @@ export default function ClientsPage() {
           throw new Error('Klijent nije pronađen');
         }
 
-        console.log('Client deleted successfully:', data);
+        // Client deleted successfully
         showToast('✔ Klijent uspješno obrisan', 'success');
         // Reload clients after deletion
         await loadClients();
@@ -333,6 +344,9 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Trial Banner */}
+      {profile && <TrialBanner profile={profile} />}
+      
       {/* Header */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
@@ -397,6 +411,11 @@ export default function ClientsPage() {
           </div>
           <div className="text-sm text-muted-foreground">
             {clients.length} klijenata
+            {profile && profile.subscription_status === 'trial' && (
+              <span className="ml-2 text-amber-600 dark:text-amber-400">
+                ({clients.length}/20 iskorišteno tijekom triala)
+              </span>
+            )}
           </div>
         </div>
       </div>

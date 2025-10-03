@@ -84,7 +84,7 @@ export default function CaseTimeline({ currentStatus, onStatusChange, disabled =
             const stepStatus = getStepStatus(index);
             const isCompleted = stepStatus === 'completed';
             const isCurrent = stepStatus === 'current';
-            const isUpcoming = stepStatus === 'upcoming';
+            // const isUpcoming = stepStatus === 'upcoming'; // Currently unused but may be needed for future styling
 
             return (
               <div key={step.status} className="flex flex-col items-center">

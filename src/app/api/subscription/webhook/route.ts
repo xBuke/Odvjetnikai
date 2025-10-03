@@ -1,43 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import Stripe from 'stripe';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+
+// Initialize Stripe with secret key
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-06-20',
+});
+
+// Get webhook secret from environment variables
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 export async function POST(request: NextRequest) {
   try {
+    // Get the raw body and signature from the request
     const body = await request.text();
     const signature = request.headers.get('stripe-signature');
-    
-    // In a real implementation, you would verify the Stripe signature here
-    // For now, we'll parse the body directly
-    let event;
-    try {
-      event = JSON.parse(body);
-    } catch (err) {
-      console.error('Invalid JSON payload:', err);
+
+    if (!signature) {
+      console.error('Missing Stripe signature header');
       return NextResponse.json(
-        { error: 'Invalid JSON payload' },
+        { error: 'Missing Stripe signature' },
         { status: 400 }
       );
     }
 
-    // Handle the event
+    if (!webhookSecret) {
+      console.error('Missing STRIPE_WEBHOOK_SECRET environment variable');
+      return NextResponse.json(
+        { error: 'Webhook secret not configured' },
+        { status: 500 }
+      );
+    }
+
+    let event: Stripe.Event;
+
+    try {
+      // Verify the webhook signature to ensure the request is from Stripe
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Received Stripe webhook event: ${event.type}`);
+      }
+    } catch (err) {
+      console.error('Webhook signature verification failed:', err);
+      return NextResponse.json(
+        { error: 'Webhook signature verification failed' },
+        { status: 400 }
+      );
+    }
+
+    // Handle different event types
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutSessionCompleted(event.data.object);
+        await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
         break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object);
+        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
         break;
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object);
+        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
         break;
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Unhandled event type: ${event.type}`);
+        }
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('Webhook processing error:', error);
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }
@@ -45,57 +76,95 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleCheckoutSessionCompleted(session: any) {
+async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   try {
-    // Use the imported supabase client
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Processing checkout.session.completed event');
+    }
     
-    // Extract user information from session metadata or customer
-    const userId = session.metadata?.user_id || session.customer;
-    const plan = session.metadata?.plan || 'basic';
+    // Extract customer email and subscription plan from session
+    const customerEmail = session.customer_details?.email;
+    const subscriptionPlan = session.metadata?.plan || 'basic'; // Fallback to 'basic' if no plan metadata
     
-    if (!userId) {
-      console.error('No user ID found in checkout session');
+    if (!customerEmail) {
+      console.error('No customer email found in checkout session');
       return;
     }
 
-    // Update user subscription status
-    const { error } = await supabase
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Looking up user by email: ${customerEmail}`);
+    }
+
+    // Use Supabase Admin client to look up user by email
+    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+
+    if (listError) {
+      console.error('Error looking up user by email:', listError);
+      throw listError;
+    }
+
+    if (!users || users.length === 0) {
+      console.error(`No users found`);
+      return;
+    }
+
+    const user = users.find((u: { email?: string }) => u.email === customerEmail);
+    if (!user) {
+      console.error(`No user found with email: ${customerEmail}`);
+      return;
+    }
+    const userId = user.id;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Found user: ${userId} for email: ${customerEmail}`);
+    }
+
+    // Update profiles table with subscription status and plan
+    const { error: updateError } = await supabaseAdmin
       .from('profiles')
       .update({
         subscription_status: 'active',
-        subscription_plan: plan,
+        subscription_plan: subscriptionPlan,
         updated_at: new Date().toISOString()
       })
       .eq('id', userId);
 
-    if (error) {
-      console.error('Error updating user subscription:', error);
-      throw error;
+    if (updateError) {
+      console.error('Error updating user subscription in profiles:', updateError);
+      throw updateError;
     }
 
-    console.log(`Successfully activated subscription for user ${userId} with plan ${plan}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Successfully activated subscription for user ${userId} with plan ${subscriptionPlan}`);
+    }
   } catch (error) {
     console.error('Error in handleCheckoutSessionCompleted:', error);
     throw error;
   }
 }
 
-async function handleSubscriptionUpdated(subscription: any) {
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   try {
-    // Use the imported supabase client
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Processing subscription updated event');
+    }
     
     // Extract user information from subscription metadata
     const userId = subscription.metadata?.user_id;
     const status = subscription.status === 'active' ? 'active' : 'inactive';
-    const plan = subscription.metadata?.plan || 'basic';
+    const plan = subscription.metadata?.plan || 'basic'; // Fallback to 'basic' if no plan metadata
     
     if (!userId) {
       console.error('No user ID found in subscription metadata');
       return;
     }
 
-    // Update user subscription status
-    const { error } = await supabase
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Updating subscription for user ${userId}: ${status} (${plan})`);
+    }
+
+    // Update user subscription status using admin client
+    const { error } = await supabaseAdmin
       .from('profiles')
       .update({
         subscription_status: status,
@@ -109,16 +178,20 @@ async function handleSubscriptionUpdated(subscription: any) {
       throw error;
     }
 
-    console.log(`Successfully updated subscription for user ${userId}: ${status} (${plan})`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Successfully updated subscription for user ${userId}: ${status} (${plan})`);
+    }
   } catch (error) {
     console.error('Error in handleSubscriptionUpdated:', error);
     throw error;
   }
 }
 
-async function handleSubscriptionDeleted(subscription: any) {
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   try {
-    // Use the imported supabase client
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Processing subscription deleted event');
+    }
     
     // Extract user information from subscription metadata
     const userId = subscription.metadata?.user_id;
@@ -128,8 +201,12 @@ async function handleSubscriptionDeleted(subscription: any) {
       return;
     }
 
-    // Update user subscription status to inactive
-    const { error } = await supabase
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Deactivating subscription for user ${userId}`);
+    }
+
+    // Update user subscription status to inactive using admin client
+    const { error } = await supabaseAdmin
       .from('profiles')
       .update({
         subscription_status: 'inactive',
@@ -143,7 +220,9 @@ async function handleSubscriptionDeleted(subscription: any) {
       throw error;
     }
 
-    console.log(`Successfully deactivated subscription for user ${userId}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Successfully deactivated subscription for user ${userId}`);
+    }
   } catch (error) {
     console.error('Error in handleSubscriptionDeleted:', error);
     throw error;

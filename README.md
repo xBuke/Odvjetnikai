@@ -44,9 +44,20 @@ This application provides a complete solution for Croatian law firms to manage t
 Create a `.env.local` file in the root directory:
 
 ```bash
+# Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+
+# Stripe Configuration (for production)
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
 ```
+
+> **⚠️ Security Note:** The above are example placeholder values. Never commit real API keys or secrets to version control.
+
+**Important:** The `SUPABASE_SERVICE_ROLE_KEY` is required for webhook handling and admin operations. Get this from your Supabase Dashboard > Settings > API.
 
 ### 2. Install Dependencies
 
@@ -108,6 +119,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - **Register**: Navigate to `/register` to create a new account
 - **Login**: Use `/login` to sign in
 - **Logout**: Click the logout button in the top-right corner
+- **Free Trial**: All new users automatically get a 7-day free trial with access to all features (limit 20 items)
 
 All routes are protected - unauthenticated users will be redirected to the login page.
 

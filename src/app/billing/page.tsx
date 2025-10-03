@@ -19,6 +19,7 @@ import { FormField, FormInput, FormSelect, FormTextarea, FormActions } from '../
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import TrialBanner from '@/components/billing/TrialBanner';
 import { supabase } from '@/lib/supabaseClient';
 import { 
   selectWithUserId, 
@@ -96,7 +97,7 @@ export default function BillingPage() {
   }
 
   // Get user session for multitenancy
-  const { } = useAuth();
+  const { profile } = useAuth();
 
   // State management
   const [billingEntries, setBillingEntries] = useState<BillingEntryWithDetails[]>([]);
@@ -134,7 +135,7 @@ export default function BillingPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  }, []); // Remove showToast from deps to prevent infinite loop
+  }, [showToast]);
 
   // Load cases from Supabase
   const loadCases = useCallback(async () => {
@@ -147,7 +148,7 @@ export default function BillingPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  }, []); // Remove showToast from deps to prevent infinite loop
+  }, [showToast]);
 
   // Load billing entries from Supabase with client and case joins
   const loadBillingEntries = useCallback(async () => {
@@ -174,7 +175,7 @@ export default function BillingPage() {
     } finally {
       setLoading(false);
     }
-  }, []); // Remove showToast and t from deps to prevent infinite loop
+  }, [showToast, t]);
 
   // Load all data on component mount
   useEffect(() => {
@@ -186,7 +187,7 @@ export default function BillingPage() {
       ]);
     };
     loadData();
-  }, []); // Empty dependency array to run only once on mount
+  }, [loadBillingEntries, loadCases, loadClients]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -384,6 +385,9 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
+      {/* Trial Banner */}
+      {profile && <TrialBanner profile={profile} />}
+      
       {/* Error Message */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">

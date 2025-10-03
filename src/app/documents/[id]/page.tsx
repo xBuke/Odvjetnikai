@@ -226,7 +226,7 @@ Net Income: $400,000`
   // Handle download
   const handleDownload = () => {
     if (document) {
-      console.log('Downloading:', document.name);
+      // Downloading document
       alert(`Downloading ${document.name}`);
     }
   };

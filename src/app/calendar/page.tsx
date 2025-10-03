@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
+import TrialBanner from '@/components/billing/TrialBanner';
 import { 
   selectWithUserId, 
   insertWithUserId, 
@@ -61,7 +62,7 @@ interface NewEvent {
 
 export default function CalendarPage() {
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -299,6 +300,9 @@ export default function CalendarPage() {
 
   return (
     <div className="p-4 sm:p-6">
+      {/* Trial Banner */}
+      {profile && <TrialBanner profile={profile} />}
+      
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t('calendar.title')}</h1>
         <button

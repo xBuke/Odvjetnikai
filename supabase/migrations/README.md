@@ -4,14 +4,32 @@ This directory contains SQL migration files for the Law Firm SaaS application.
 
 ## Migration Files
 
-### 20250103_add_documents_bucket.sql
-- **Purpose**: Sets up the documents storage bucket with Row Level Security policies
-- **Features**:
-  - Creates a 'documents' storage bucket (if it doesn't exist)
-  - Enables Row Level Security on storage.objects
-  - Adds policies for SELECT, INSERT, and DELETE operations
-  - Ensures users can only access their own documents
-  - Idempotent (safe to run multiple times)
+### Core Database Setup
+- **20250103_add_billing_update_function.sql** - Billing table update triggers
+- **20250103_add_handle_new_user_function.sql** - New user initialization function
+- **20250103_add_user_preferences_update_function.sql** - User preferences triggers
+- **20250103_fix_database_schema_rls_search_path.sql** - RLS search path fixes
+
+### Storage & Documents
+- **20250103_add_documents_bucket.sql.backup** - Documents storage bucket setup (backup)
+- **20250106_add_punomoc_tuzba_document_types.sql** - Additional document types
+
+### Subscription & Billing
+- **20250103_add_stripe_subscription_support.sql** - Stripe subscription integration
+- **20250104_add_subscription_status_column.sql** - Subscription status column
+- **20250107_fix_subscription_status_rls.sql** - Subscription status RLS fixes
+- **20250108_fix_subscription_columns_and_rls.sql** - Subscription columns and RLS updates
+
+### Trial System
+- **20250112_add_trial_fields_to_profiles.sql** - Trial fields for user profiles
+- **20250112_update_rls_for_trial_users.sql** - RLS policies for trial users
+
+### User Management
+- **20250105_add_case_status_column.sql** - Case status column
+- **20250109_update_handle_new_user_and_add_demo_user.sql** - User handling updates
+- **20250110_fix_demo_account_and_subscription.sql** - Demo account fixes
+- **20250111_update_handle_new_user_and_subscription_plan.sql** - User and subscription plan updates
+- **20250113_remove_demo_user_and_cleanup.sql** - Demo user removal and cleanup
 
 ## How to Apply Migrations
 

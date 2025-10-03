@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Eye, EyeOff, Mail, Lock, Scale, Copy, Check, UserPlus, CreditCard } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Scale, UserPlus, CreditCard } from 'lucide-react';
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -14,7 +13,6 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const { signIn, checkSubscriptionStatus } = useAuth();
   const router = useRouter();
@@ -58,7 +56,7 @@ export default function AuthPage() {
         // Check subscription status after successful login
         const subscriptionStatus = await checkSubscriptionStatus();
         
-        if (subscriptionStatus === 'active' || email === 'demo@odvjetnikai.com') {
+        if (subscriptionStatus === 'active') {
           router.push('/');
         } else {
           // Redirect to pricing page with message for inactive users
@@ -76,74 +74,10 @@ export default function AuthPage() {
     router.push('/pricing');
   };
 
-  const copyToClipboard = async (text: string, field: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedField(field);
-      setTimeout(() => setCopiedField(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-6">
-        {/* Demo Credentials Banner - Only show on Login tab */}
-        {activeTab === 'login' && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 shadow-sm">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center">
-                  <Scale className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-                  Za isprobavanje aplikacije možete se prijaviti s demo računom:
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between bg-white dark:bg-blue-800/50 rounded-lg p-2 border border-blue-200 dark:border-blue-700">
-                    <div className="flex-1">
-                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Email:</span>
-                      <span className="ml-2 font-mono text-sm font-bold text-blue-900 dark:text-blue-100">
-                        demo@odvjetnikai.com
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => copyToClipboard('demo@odvjetnikai.com', 'email')}
-                      className="ml-2 p-1 hover:bg-blue-100 dark:hover:bg-blue-700 rounded transition-colors"
-                    >
-                      {copiedField === 'email' ? (
-                        <Check className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <Copy className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      )}
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between bg-white dark:bg-blue-800/50 rounded-lg p-2 border border-blue-200 dark:border-blue-700">
-                    <div className="flex-1">
-                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Lozinka:</span>
-                      <span className="ml-2 font-mono text-sm font-bold text-blue-900 dark:text-blue-100">
-                        Demo123!
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => copyToClipboard('Demo123!', 'password')}
-                      className="ml-2 p-1 hover:bg-blue-100 dark:hover:bg-blue-700 rounded transition-colors"
-                    >
-                      {copiedField === 'password' ? (
-                        <Check className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <Copy className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* App Logo and Title */}
         <div className="text-center">

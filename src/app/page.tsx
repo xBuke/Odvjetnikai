@@ -13,10 +13,13 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import TrialBanner from '@/components/billing/TrialBanner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Dashboard() {
   const searchParams = useSearchParams();
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const { profile } = useAuth();
 
   // Check for successful checkout session
   useEffect(() => {
@@ -239,6 +242,9 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Trial Banner */}
+      {profile && <TrialBanner profile={profile} />}
 
       {/* Welcome Section */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 lg:p-6">

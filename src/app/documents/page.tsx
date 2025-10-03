@@ -34,6 +34,8 @@ import { useUserPreferences, SortDirection } from '@/lib/userPreferences';
 import { validateFile, validateDocumentType, getFileValidationErrorMessage } from '@/lib/fileValidation';
 import { getContractTemplates } from '@/lib/contractTemplates';
 import ContractGenerator from '@/components/contracts/ContractGenerator';
+import TrialBanner from '@/components/billing/TrialBanner';
+import { canCreateEntity } from '@/lib/ui-limit';
 
 interface Case {
   id: string;
@@ -69,7 +71,7 @@ type DocumentsSortField = 'name' | 'type' | 'case_title' | 'created_at' | 'updat
 
 export default function DocumentsPage() {
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -131,7 +133,7 @@ export default function DocumentsPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  }, [user]); // Remove showToast from deps to prevent infinite loop
+  }, [user, showToast]);
 
   // Load user preferences from Supabase
   const loadUserPreferences = useCallback(async () => {
@@ -206,7 +208,7 @@ export default function DocumentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [sortField, sortDirection]); // Remove showToast from deps to prevent infinite loop
+  }, [sortField, sortDirection, showToast]);
 
   // Load data on component mount
   useEffect(() => {
@@ -218,14 +220,14 @@ export default function DocumentsPage() {
       };
       loadData();
     }
-  }, [user]); // Only depend on user to prevent infinite loops
+  }, [user, loadCases, loadDocuments, loadUserPreferences]);
 
   // Load documents when preferences are loaded and sorting changes
   useEffect(() => {
     if (preferencesLoaded && user) {
       loadDocuments();
     }
-  }, [preferencesLoaded, sortField, sortDirection, user]); // Remove loadDocuments from deps to prevent infinite loop
+  }, [preferencesLoaded, sortField, sortDirection, user, loadDocuments]);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isContractGeneratorOpen, setIsContractGeneratorOpen] = useState(false);
@@ -281,6 +283,15 @@ export default function DocumentsPage() {
     if (!uploadFormData.name.trim()) {
       showToast('Molimo unesite naziv dokumenta', 'error');
       return;
+    }
+
+    // Check trial limits for new documents
+    if (profile) {
+      const limitCheck = canCreateEntity(profile, documents.length);
+      if (!limitCheck.ok) {
+        showToast(limitCheck.reason || 'Greška pri kreiranju dokumenta', 'error');
+        return;
+      }
     }
 
     // Validate document type if provided
@@ -569,6 +580,9 @@ export default function DocumentsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Trial Banner */}
+      {profile && <TrialBanner profile={profile} />}
+      
       {/* Header */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
         <div className="flex items-center justify-between">
@@ -629,6 +643,11 @@ export default function DocumentsPage() {
           </div>
           <div className="text-sm text-muted-foreground">
             {documents.length} dokumenata
+            {profile && profile.subscription_status === 'trial' && (
+              <span className="ml-2 text-amber-600 dark:text-amber-400">
+                ({documents.length}/20 iskorišteno tijekom triala)
+              </span>
+            )}
           </div>
         </div>
       </div>

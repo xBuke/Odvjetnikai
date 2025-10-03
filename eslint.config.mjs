@@ -27,6 +27,7 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "*.js", // Ignore all .js files (Node.js scripts)
     ],
   },
 ];

@@ -27,9 +27,9 @@ export async function POST(request: NextRequest) {
     // Use the imported supabase client
 
     // Look up user by email in auth.users
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
     
-    if (authError || !authUser.user) {
+    if (authError || !authUsers.users) {
       console.error('Error finding user by email:', authError);
       return NextResponse.json(
         { error: 'User not found' },
@@ -37,7 +37,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = authUser.user.id;
+    const user = authUsers.users.find((u: { email?: string }) => u.email === email);
+    if (!user) {
+      console.error('Error finding user by email:', authError);
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    const userId = user.id;
 
     // Update user subscription in profiles table
     const { data: updatedProfile, error: updateError } = await supabase
@@ -104,9 +113,9 @@ export async function GET(request: NextRequest) {
     // Use the imported supabase client
 
     // Look up user by email in auth.users
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
     
-    if (authError || !authUser.user) {
+    if (authError || !authUsers.users) {
       console.error('Error finding user by email:', authError);
       return NextResponse.json(
         { error: 'User not found' },
@@ -114,7 +123,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userId = authUser.user.id;
+    const user = authUsers.users.find((u: { email?: string }) => u.email === email);
+    if (!user) {
+      console.error('Error finding user by email:', authError);
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    const userId = user.id;
 
     // Get current subscription status
     const { data: profile, error: profileError } = await supabase

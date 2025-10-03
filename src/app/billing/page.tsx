@@ -34,6 +34,7 @@ interface Client {
   phone: string;
   oib: string;
   notes: string;
+  readonly updated_at?: string; // Read-only, automatically managed by database trigger
 }
 
 interface Case {
@@ -43,7 +44,7 @@ interface Case {
   status: 'Open' | 'In Progress' | 'Closed';
   notes: string;
   created_at: string;
-  updated_at?: string;
+  readonly updated_at?: string; // Read-only, automatically managed by database trigger
   clients?: {
     name: string;
   };
@@ -203,8 +204,8 @@ export default function BillingPage() {
       setError(null);
 
       await insertWithUserId(supabase, 'billing_entries', {
-        client_id: parseInt(formData.client_id),
-        case_id: parseInt(formData.case_id),
+        client_id: formData.client_id,
+        case_id: formData.case_id,
         hours: formData.hours,
         rate: formData.rate,
         notes: formData.notes
@@ -250,8 +251,8 @@ export default function BillingPage() {
       setError(null);
 
       await updateWithUserId(supabase, 'billing_entries', 'id', editingEntry.id, {
-        client_id: parseInt(formData.client_id),
-        case_id: parseInt(formData.case_id),
+        client_id: formData.client_id,
+        case_id: formData.case_id,
         hours: formData.hours,
         rate: formData.rate,
         notes: formData.notes
@@ -314,8 +315,8 @@ export default function BillingPage() {
   const handleEdit = (entry: BillingEntryWithDetails) => {
     setEditingEntry(entry);
     setFormData({
-      client_id: entry.client_id.toString(),
-      case_id: entry.case_id.toString(),
+      client_id: entry.client_id,
+      case_id: entry.case_id,
       hours: entry.hours,
       rate: entry.rate,
       notes: entry.notes || ''

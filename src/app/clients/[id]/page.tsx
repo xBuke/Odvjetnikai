@@ -27,6 +27,7 @@ interface Client {
   phone: string;
   oib: string;
   notes: string;
+  readonly updated_at?: string; // Read-only, automatically managed by database trigger
 }
 
 interface Case {

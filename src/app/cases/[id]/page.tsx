@@ -18,7 +18,8 @@ import {
   ExternalLink,
   FolderOpen,
   X,
-  Loader2
+  Loader2,
+  Edit
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,7 +33,7 @@ interface Case {
   status: 'Open' | 'In Progress' | 'Closed';
   notes: string;
   created_at: string;
-  updated_at?: string;
+  readonly updated_at?: string; // Read-only, automatically managed by database trigger
   clients?: {
     name: string;
   };
@@ -293,7 +294,17 @@ export default function CaseDetailPage() {
       {/* Case Information */}
       <div className="bg-card rounded-lg shadow-sm border border-border">
         <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Informacije o predmetu</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">Informacije o predmetu</h2>
+            <button
+              onClick={() => router.push(`/cases/${caseId}/edit`)}
+              className="flex items-center space-x-2 text-primary hover:text-primary/80 transition-colors duration-200"
+              title="Uredi predmet"
+            >
+              <Edit className="w-4 h-4" />
+              <span>Uredi</span>
+            </button>
+          </div>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

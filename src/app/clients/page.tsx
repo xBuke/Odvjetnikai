@@ -12,7 +12,11 @@ import {
   Phone,
   FileText,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Calendar
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import { FormField, FormInput, FormTextarea, FormActions } from '../../components/ui/Form';
@@ -22,10 +26,12 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   selectWithUserId, 
+  selectWithUserIdAndOrder,
   insertAndReturnWithUserId, 
   updateWithUserId, 
   deleteWithUserId 
 } from '@/lib/supabaseHelpers';
+import { useUserPreferences, SortField, SortDirection } from '@/lib/userPreferences';
 
 interface Client {
   id: string;
@@ -35,8 +41,11 @@ interface Client {
   oib: string;
   notes: string;
   created_at?: string;
-  updated_at?: string;
+  readonly updated_at?: string; // Read-only, automatically managed by database trigger
 }
+
+// TypeScript interfaces for sorting
+type ClientsSortField = 'name' | 'email' | 'phone' | 'created_at' | 'updated_at';
 
 export default function ClientsPage() {
   const router = useRouter();
@@ -69,14 +78,40 @@ export default function ClientsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Sorting state with Supabase persistence
+  const [sortField, setSortField] = useState<ClientsSortField>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
-  // Load clients from Supabase
+  // Use shared user preferences utility
+  const { loadPreferences, savePreferences } = useUserPreferences('clients', showToast);
+
+
+  // Load user preferences from Supabase
+  const loadUserPreferences = useCallback(async () => {
+    try {
+      const preferences = await loadPreferences();
+      setSortField(preferences.sortField as ClientsSortField);
+      setSortDirection(preferences.sortDirection);
+    } catch (err) {
+      console.error('Error loading user preferences:', err);
+    } finally {
+      setPreferencesLoaded(true);
+    }
+  }, [loadPreferences]);
+
+  // Load clients from Supabase with sorting
   const loadClients = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const data = await selectWithUserId(supabase, 'clients') as unknown as Client[];
+      const orderBy = {
+        column: sortField,
+        ascending: sortDirection === 'asc'
+      };
+
+      const data = await selectWithUserIdAndOrder(supabase, 'clients', {}, '*', orderBy) as unknown as Client[];
       setClients(data || []);
     } catch (err) {
       console.error('Error loading clients:', err);
@@ -86,18 +121,72 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, sortField, sortDirection]);
 
-  // Load clients on component mount
+  // Load data on component mount
   useEffect(() => {
-    loadClients();
-  }, [loadClients]);
+    const loadData = async () => {
+      // First load user preferences, then load clients
+      await loadUserPreferences();
+      await loadClients();
+    };
+    loadData();
+  }, [loadUserPreferences, loadClients]);
+
+  // Load clients when preferences are loaded and sorting changes
+  useEffect(() => {
+    if (preferencesLoaded) {
+      loadClients();
+    }
+  }, [preferencesLoaded, sortField, sortDirection, loadClients]);
+
+  // Handle sorting
+  const handleSort = async (field: ClientsSortField) => {
+    let newField = field;
+    let newDirection: SortDirection;
+
+    if (sortField === field) {
+      // Toggle direction if same field
+      newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      // Set new field with default direction
+      newField = field;
+      newDirection = 'asc';
+    }
+
+    // Update state
+    setSortField(newField);
+    setSortDirection(newDirection);
+
+    // Save preferences to Supabase
+    await savePreferences(newField, newDirection);
+  };
+
+  // Get sort icon for column headers
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-4 h-4 text-muted-foreground" />;
+    }
+    return sortDirection === 'asc' ? 
+      <ArrowUp className="w-4 h-4 text-primary" /> : 
+      <ArrowDown className="w-4 h-4 text-primary" />;
+  };
 
   // Filter clients based on search term
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.oib.includes(searchTerm)
   );
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -127,7 +216,7 @@ export default function ClientsPage() {
       }
 
       if (editingClient) {
-        // Update existing client
+        // Update existing client - only send fields that user can edit
         const data = await updateWithUserId(
           supabase, 
           'clients', 
@@ -138,8 +227,8 @@ export default function ClientsPage() {
             email: formData.email,
             phone: formData.phone,
             oib: formData.oib,
-            notes: formData.notes,
-            updated_at: new Date().toISOString()
+            notes: formData.notes
+            // updated_at will be automatically set by database trigger
           }
         );
 
@@ -149,6 +238,13 @@ export default function ClientsPage() {
 
         console.log('Client updated successfully:', data);
         showToast('✔ Klijent uspješno ažuriran', 'success');
+        
+        // Auto-close modal and reset form after successful update
+        await loadClients();
+        setFormData({ name: '', email: '', phone: '', oib: '', notes: '' });
+        setEditingClient(null);
+        setIsModalOpen(false);
+        return; // Exit early to prevent duplicate form reset
       } else {
         // Add new client
         const data = await insertAndReturnWithUserId(supabase, 'clients', {
@@ -163,7 +259,7 @@ export default function ClientsPage() {
         showToast('✔ Klijent uspješno dodan', 'success');
       }
 
-      // Reload clients and reset form (only for updates)
+      // Reload clients and reset form (only for new clients)
       await loadClients();
       setFormData({ name: '', email: '', phone: '', oib: '', notes: '' });
       setEditingClient(null);
@@ -269,6 +365,43 @@ export default function ClientsPage() {
         </div>
       </div>
 
+      {/* Sort Controls */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+          <div className="flex items-center space-x-4">
+            <label className="text-sm font-medium text-foreground">
+              Sort by:
+            </label>
+            <select
+              value={`${sortField}-${sortDirection}`}
+              onChange={async (e) => {
+                const [field, direction] = e.target.value.split('-');
+                const newField = field as ClientsSortField;
+                const newDirection = direction as SortDirection;
+                setSortField(newField);
+                setSortDirection(newDirection);
+                await savePreferences(newField, newDirection);
+              }}
+              className="px-3 py-2 border border-border rounded-lg bg-input text-foreground focus:ring-2 focus:ring-ring focus:border-ring"
+            >
+              <option value="created_at-desc">Datum kreiranja (najnoviji)</option>
+              <option value="created_at-asc">Datum kreiranja (najstariji)</option>
+              <option value="updated_at-desc">Datum ažuriranja (najnoviji)</option>
+              <option value="updated_at-asc">Datum ažuriranja (najstariji)</option>
+              <option value="name-asc">Ime (A-Z)</option>
+              <option value="name-desc">Ime (Z-A)</option>
+              <option value="email-asc">Email (A-Z)</option>
+              <option value="email-desc">Email (Z-A)</option>
+              <option value="phone-asc">Telefon (A-Z)</option>
+              <option value="phone-desc">Telefon (Z-A)</option>
+            </select>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {clients.length} klijenata
+          </div>
+        </div>
+      </div>
+
       {/* Error Message */}
       {error && (
         <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
@@ -292,20 +425,56 @@ export default function ClientsPage() {
               <table className="w-full min-w-[600px]">
                 <thead className="bg-muted border-b border-border">
                   <tr>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      {t('clients.name')}
+                    <th 
+                      className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 transition-colors"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>{t('clients.name')}</span>
+                        {getSortIcon('name')}
+                      </div>
                     </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
-                      {t('clients.email')}
+                    <th 
+                      className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell cursor-pointer hover:bg-muted/80 transition-colors"
+                      onClick={() => handleSort('email')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>{t('clients.email')}</span>
+                        {getSortIcon('email')}
+                      </div>
                     </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                      {t('clients.phone')}
+                    <th 
+                      className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell cursor-pointer hover:bg-muted/80 transition-colors"
+                      onClick={() => handleSort('phone')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>{t('clients.phone')}</span>
+                        {getSortIcon('phone')}
+                      </div>
                     </th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                       {t('clients.oib')}
                     </th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                       {t('clients.notes')}
+                    </th>
+                    <th 
+                      className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell cursor-pointer hover:bg-muted/80 transition-colors"
+                      onClick={() => handleSort('created_at')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Datum kreiranja</span>
+                        {getSortIcon('created_at')}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden xl:table-cell cursor-pointer hover:bg-muted/80 transition-colors"
+                      onClick={() => handleSort('updated_at')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Datum ažuriranja</span>
+                        {getSortIcon('updated_at')}
+                      </div>
                     </th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {t('common.actions')}
@@ -346,6 +515,18 @@ export default function ClientsPage() {
                       </td>
                       <td className="px-3 sm:px-6 py-4 text-sm text-muted-foreground max-w-xs truncate hidden lg:table-cell">
                         {client.notes}
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
+                          {client.created_at ? formatDate(client.created_at) : '-'}
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden xl:table-cell">
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
+                          {client.updated_at ? formatDate(client.updated_at) : '-'}
+                        </div>
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div 

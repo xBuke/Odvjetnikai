@@ -13,7 +13,10 @@ import {
   FileCheck,
   Trash2,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -21,11 +24,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { 
   selectWithUserId, 
+  selectWithUserIdAndOrder,
   insertWithUserId, 
   deleteWithUserId,
   getUserOrThrow
 } from '@/lib/supabaseHelpers';
 import { getDocumentTypeOptions, getDocumentLabel, type DocumentType } from '@/lib/documentTypes';
+import { useUserPreferences, SortField, SortDirection } from '@/lib/userPreferences';
 
 interface Case {
   id: string;
@@ -55,6 +60,9 @@ interface Template {
   category: string;
 }
 
+// TypeScript interfaces for sorting
+type DocumentsSortField = 'name' | 'type' | 'case_title' | 'created_at' | 'updated_at';
+
 export default function DocumentsPage() {
   const { showToast } = useToast();
   const { user } = useAuth();
@@ -75,6 +83,14 @@ export default function DocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sorting state with Supabase persistence
+  const [sortField, setSortField] = useState<DocumentsSortField>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+
+  // Use shared user preferences utility
+  const { loadPreferences, savePreferences } = useUserPreferences('documents', showToast);
 
   // Mock templates data
   const mockTemplates: Template[] = [
@@ -118,13 +134,68 @@ export default function DocumentsPage() {
     }
   }, [user, showToast]);
 
-  // Load documents from Supabase
+  // Load user preferences from Supabase
+  const loadUserPreferences = useCallback(async () => {
+    try {
+      const preferences = await loadPreferences();
+      setSortField(preferences.sortField as DocumentsSortField);
+      setSortDirection(preferences.sortDirection);
+    } catch (err) {
+      console.error('Error loading user preferences:', err);
+    } finally {
+      setPreferencesLoaded(true);
+    }
+  }, [loadPreferences]);
+
+  // Load documents from Supabase with sorting
   const loadDocuments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const data = await selectWithUserId(supabase, 'documents', {}, '*, cases(title)') as unknown as Document[];
+      // Map frontend sort field to database column
+      const getSortColumn = (field: DocumentsSortField) => {
+        switch (field) {
+          case 'case_title':
+            return 'cases.title'; // This won't work directly, we'll handle case sorting differently
+          case 'name':
+            return 'name';
+          case 'type':
+            return 'type';
+          case 'created_at':
+            return 'created_at';
+          case 'updated_at':
+            return 'updated_at';
+          default:
+            return 'created_at';
+        }
+      };
+
+      const sortColumn = getSortColumn(sortField);
+      const orderBy = {
+        column: sortColumn,
+        ascending: sortDirection === 'asc'
+      };
+
+      // For case title sorting, we need to handle it differently since it's a joined field
+      let data: Document[];
+      
+      if (sortField === 'case_title') {
+        // For case title sorting, we'll fetch all data and sort in JavaScript
+        data = await selectWithUserId(supabase, 'documents', {}, '*, cases(title)') as unknown as Document[];
+        
+        // Sort by case title in JavaScript
+        data.sort((a, b) => {
+          const aTitle = a.cases?.title || '';
+          const bTitle = b.cases?.title || '';
+          const comparison = aTitle.localeCompare(bTitle);
+          return sortDirection === 'asc' ? comparison : -comparison;
+        });
+      } else {
+        // For other fields, use database sorting
+        data = await selectWithUserIdAndOrder(supabase, 'documents', {}, '*, cases(title)', orderBy) as unknown as Document[];
+      }
+      
       setDocuments(data || []);
     } catch (err) {
       console.error('Error loading documents:', err);
@@ -136,17 +207,26 @@ export default function DocumentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, sortField, sortDirection]);
 
   // Load data on component mount
   useEffect(() => {
     if (user) {
       const loadData = async () => {
+        // First load user preferences, then load cases and documents
+        await loadUserPreferences();
         await Promise.all([loadCases(), loadDocuments()]);
       };
       loadData();
     }
-  }, [user, loadCases, loadDocuments]);
+  }, [user, loadUserPreferences, loadCases, loadDocuments]);
+
+  // Load documents when preferences are loaded and sorting changes
+  useEffect(() => {
+    if (preferencesLoaded && user) {
+      loadDocuments();
+    }
+  }, [preferencesLoaded, sortField, sortDirection, loadDocuments, user]);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadFormData, setUploadFormData] = useState({
@@ -240,7 +320,7 @@ export default function DocumentsPage() {
       await insertWithUserId(supabase, 'documents', {
         name: uploadFormData.name,
         file_url: publicUrl,
-        case_id: uploadFormData.caseId ? parseInt(uploadFormData.caseId) : null,
+        case_id: uploadFormData.caseId || null,
         file_size: selectedFile.size,
         file_type: selectedFile.type,
         type: uploadFormData.type || null
@@ -356,6 +436,38 @@ export default function DocumentsPage() {
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
+  // Handle sorting
+  const handleSort = async (field: DocumentsSortField) => {
+    let newField = field;
+    let newDirection: SortDirection;
+
+    if (sortField === field) {
+      // Toggle direction if same field
+      newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      // Set new field with default direction
+      newField = field;
+      newDirection = 'asc';
+    }
+
+    // Update state
+    setSortField(newField);
+    setSortDirection(newDirection);
+
+    // Save preferences to Supabase
+    await savePreferences(newField, newDirection);
+  };
+
+  // Get sort icon for column headers
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-4 h-4 text-muted-foreground" />;
+    }
+    return sortDirection === 'asc' ? 
+      <ArrowUp className="w-4 h-4 text-primary" /> : 
+      <ArrowDown className="w-4 h-4 text-primary" />;
+  };
+
   // Map document type enum values to user-friendly labels
   const getDocumentTypeLabel = (type?: DocumentType) => {
     if (!type) return t('documents.unknownType');
@@ -391,6 +503,43 @@ export default function DocumentsPage() {
         </div>
       )}
 
+      {/* Sort Controls */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+          <div className="flex items-center space-x-4">
+            <label className="text-sm font-medium text-foreground">
+              Sort by:
+            </label>
+            <select
+              value={`${sortField}-${sortDirection}`}
+              onChange={async (e) => {
+                const [field, direction] = e.target.value.split('-');
+                const newField = field as DocumentsSortField;
+                const newDirection = direction as SortDirection;
+                setSortField(newField);
+                setSortDirection(newDirection);
+                await savePreferences(newField, newDirection);
+              }}
+              className="px-3 py-2 border border-border rounded-lg bg-input text-foreground focus:ring-2 focus:ring-ring focus:border-ring"
+            >
+              <option value="created_at-desc">Datum kreiranja (najnoviji)</option>
+              <option value="created_at-asc">Datum kreiranja (najstariji)</option>
+              <option value="updated_at-desc">Datum ažuriranja (najnoviji)</option>
+              <option value="updated_at-asc">Datum ažuriranja (najstariji)</option>
+              <option value="name-asc">Naziv dokumenta (A-Z)</option>
+              <option value="name-desc">Naziv dokumenta (Z-A)</option>
+              <option value="type-asc">Tip dokumenta (A-Z)</option>
+              <option value="type-desc">Tip dokumenta (Z-A)</option>
+              <option value="case_title-asc">Predmet (A-Z)</option>
+              <option value="case_title-desc">Predmet (Z-A)</option>
+            </select>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {documents.length} dokumenata
+          </div>
+        </div>
+      </div>
+
       {/* Documents Table */}
       <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
         <div className="px-6 py-4 border-b border-border">
@@ -413,17 +562,41 @@ export default function DocumentsPage() {
             <table className="w-full">
               <thead className="bg-muted border-b border-border">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {t('clients.name')}
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>{t('clients.name')}</span>
+                      {getSortIcon('name')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {t('documents.documentType')}
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('type')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>{t('documents.documentType')}</span>
+                      {getSortIcon('type')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {t('documents.case')}
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('case_title')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>{t('documents.case')}</span>
+                      {getSortIcon('case_title')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {t('documents.uploadedDate')}
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('created_at')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>{t('documents.uploadedDate')}</span>
+                      {getSortIcon('created_at')}
+                    </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     {t('common.actions')}

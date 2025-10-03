@@ -102,6 +102,42 @@ export async function selectWithUserId(
   return (data as unknown as Record<string, unknown>[]) || [];
 }
 
+export async function selectWithUserIdAndOrder(
+  supabase: SupabaseClient, 
+  table: string, 
+  filters: Record<string, unknown> = {},
+  selectColumns: string = '*',
+  orderBy?: { column: string; ascending: boolean }
+): Promise<Record<string, unknown>[]> {
+  const user = await getUserOrThrow(supabase);
+  
+  let query = supabase
+    .from(table)
+    .select(selectColumns)
+    .eq('user_id', user.id);
+  
+  // Apply additional filters
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      query = query.eq(key, value);
+    }
+  });
+  
+  // Apply ordering if provided
+  if (orderBy) {
+    query = query.order(orderBy.column, { ascending: orderBy.ascending });
+  }
+  
+  const { data, error } = await query;
+  
+  if (error) {
+    console.error(`Supabase select error for table ${table}:`, error);
+    throw new Error(error.message ?? "Greška u Supabase upitu");
+  }
+  
+  return (data as unknown as Record<string, unknown>[]) || [];
+}
+
 /**
  * Update a record with automatic user_id filtering
  * @param supabase - Supabase client instance

@@ -239,7 +239,7 @@ export default function CalendarPage() {
     setEditingDeadline(deadline);
     setNewEvent({
       title: deadline.title,
-      case_id: deadline.case_id.toString(),
+      case_id: deadline.case_id,
       due_date: dateStr,
       time: timeStr
     });

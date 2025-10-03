@@ -13,7 +13,10 @@ import {
   Clock,
   XCircle,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import { FormField, FormInput, FormTextarea, FormSelect, FormActions } from '../../components/ui/Form';
@@ -23,10 +26,12 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   selectWithUserId, 
+  selectWithUserIdAndOrder,
   insertAndReturnWithUserId, 
   updateWithUserId, 
   deleteWithUserId 
 } from '@/lib/supabaseHelpers';
+import { useUserPreferences, SortField, SortDirection } from '@/lib/userPreferences';
 
 interface Client {
   id: string;
@@ -36,7 +41,7 @@ interface Client {
   oib: string;
   notes: string;
   created_at?: string;
-  updated_at?: string;
+  readonly updated_at?: string; // Read-only, automatically managed by database trigger
 }
 
 interface Case {
@@ -46,7 +51,7 @@ interface Case {
   status: 'Open' | 'In Progress' | 'Closed';
   notes: string;
   created_at: string;
-  updated_at?: string;
+  readonly updated_at?: string; // Read-only, automatically managed by database trigger
   clients?: {
     name: string;
   };
@@ -56,6 +61,9 @@ interface CaseWithClient extends Case {
   clientName: string;
   statusColor: 'blue' | 'yellow' | 'green';
 }
+
+// TypeScript interfaces for sorting (extended from shared types)
+type CasesSortField = 'title' | 'status' | 'created_at' | 'updated_at' | 'client_name';
 
 export default function CasesPage() {
   const router = useRouter();
@@ -86,7 +94,27 @@ export default function CasesPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Sorting state with Supabase persistence
+  const [sortField, setSortField] = useState<CasesSortField>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
+  // Use shared user preferences utility
+  const { loadPreferences, savePreferences } = useUserPreferences('cases', showToast);
+
+  // Load user preferences from Supabase
+  const loadUserPreferences = useCallback(async () => {
+    try {
+      const preferences = await loadPreferences();
+      setSortField(preferences.sortField as CasesSortField);
+      setSortDirection(preferences.sortDirection);
+    } catch (err) {
+      console.error('Error loading user preferences:', err);
+    } finally {
+      setPreferencesLoaded(true);
+    }
+  }, [loadPreferences]);
 
   // Load clients from Supabase
   const loadClients = useCallback(async () => {
@@ -102,13 +130,55 @@ export default function CasesPage() {
   }, [showToast]);
 
 
-  // Load cases from Supabase with client information
+  // Load cases from Supabase with client information and sorting
   const loadCases = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const data = await selectWithUserId(supabase, 'cases', {}, 'id, title, status, notes, created_at, clients(name)') as unknown as Record<string, unknown>[];
+      // Map frontend sort field to database column
+      const getSortColumn = (field: CasesSortField) => {
+        switch (field) {
+          case 'client_name':
+            return 'clients.name'; // This won't work directly, we'll handle client sorting differently
+          case 'title':
+            return 'title';
+          case 'status':
+            return 'status';
+          case 'created_at':
+            return 'created_at';
+          case 'updated_at':
+            return 'updated_at';
+          default:
+            return 'created_at';
+        }
+      };
+
+      const sortColumn = getSortColumn(sortField);
+      const orderBy = {
+        column: sortColumn,
+        ascending: sortDirection === 'asc'
+      };
+
+      // For client name sorting, we need to handle it differently since it's a joined field
+      let data: Record<string, unknown>[];
+      
+      if (sortField === 'client_name') {
+        // For client name sorting, we'll fetch all data and sort in JavaScript
+        // This is not ideal for large datasets, but works for the current use case
+        data = await selectWithUserId(supabase, 'cases', {}, 'id, title, status, notes, created_at, updated_at, clients(name)') as unknown as Record<string, unknown>[];
+        
+        // Sort by client name in JavaScript
+        data.sort((a, b) => {
+          const aName = (a.clients as Record<string, unknown>)?.name as string || '';
+          const bName = (b.clients as Record<string, unknown>)?.name as string || '';
+          const comparison = aName.localeCompare(bName);
+          return sortDirection === 'asc' ? comparison : -comparison;
+        });
+      } else {
+        // For other fields, use database sorting
+        data = await selectWithUserIdAndOrder(supabase, 'cases', {}, 'id, title, status, notes, created_at, updated_at, clients(name)', orderBy) as unknown as Record<string, unknown>[];
+      }
 
       // Transform data to include clientName and statusColor
       const casesWithClient: CaseWithClient[] = (data || []).map(caseItem => ({
@@ -126,7 +196,7 @@ export default function CasesPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, sortField, sortDirection]);
 
   // Get status color based on status
   const getStatusColor = (status: string): 'blue' | 'yellow' | 'green' => {
@@ -142,13 +212,54 @@ export default function CasesPage() {
     }
   };
 
+  // Handle sorting
+  const handleSort = async (field: CasesSortField) => {
+    let newField = field;
+    let newDirection: SortDirection;
+
+    if (sortField === field) {
+      // Toggle direction if same field
+      newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      // Set new field with default direction
+      newField = field;
+      newDirection = 'asc';
+    }
+
+    // Update state
+    setSortField(newField);
+    setSortDirection(newDirection);
+
+    // Save preferences to Supabase
+    await savePreferences(newField, newDirection);
+  };
+
+  // Get sort icon for column headers
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-4 h-4 text-muted-foreground" />;
+    }
+    return sortDirection === 'asc' ? 
+      <ArrowUp className="w-4 h-4 text-primary" /> : 
+      <ArrowDown className="w-4 h-4 text-primary" />;
+  };
+
   // Load data on component mount
   useEffect(() => {
     const loadData = async () => {
+      // First load user preferences, then load cases and clients
+      await loadUserPreferences();
       await Promise.all([loadClients(), loadCases()]);
     };
     loadData();
-  }, [loadClients, loadCases]);
+  }, [loadUserPreferences, loadClients, loadCases]);
+
+  // Load cases when preferences are loaded and sorting changes
+  useEffect(() => {
+    if (preferencesLoaded) {
+      loadCases();
+    }
+  }, [preferencesLoaded, sortField, sortDirection, loadCases]);
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -169,7 +280,7 @@ export default function CasesPage() {
 
 
       if (editingCase) {
-        // Update existing case
+        // Update existing case - only send fields that user can edit
         await updateWithUserId(
           supabase, 
           'cases', 
@@ -177,17 +288,27 @@ export default function CasesPage() {
           editingCase.id, 
           {
             title: formData.title,
-            client_id: parseInt(formData.client_id),
+            client_id: formData.client_id,
             status: formData.status,
-            notes: formData.notes,
-            updated_at: new Date().toISOString()
+            notes: formData.notes
+            // updated_at will be automatically set by database trigger
           }
         );
+
+        console.log('Case updated successfully');
+        showToast('✔ Predmet uspješno ažuriran', 'success');
+        
+        // Auto-close modal and reset form after successful update
+        await loadCases();
+        setFormData({ title: '', client_id: '', status: 'Open', notes: '' });
+        setEditingCase(null);
+        setIsModalOpen(false);
+        return; // Exit early to prevent duplicate form reset
       } else {
         // Add new case
         const data = await insertAndReturnWithUserId(supabase, 'cases', {
           title: formData.title,
-          client_id: parseInt(formData.client_id),
+          client_id: formData.client_id,
           status: formData.status,
           notes: formData.notes
         });
@@ -200,7 +321,7 @@ export default function CasesPage() {
         return; // Exit early to prevent form reset
       }
 
-      // Reload cases and reset form (only for updates)
+      // Reload cases and reset form (only for new cases)
       await loadCases();
       setFormData({ title: '', client_id: '', status: 'Open', notes: '' });
       setEditingCase(null);
@@ -226,7 +347,7 @@ export default function CasesPage() {
     setEditingCase(caseItem);
     setFormData({
       title: caseItem.title,
-      client_id: caseItem.client_id.toString(),
+      client_id: caseItem.client_id,
       status: caseItem.status,
       notes: caseItem.notes
     });
@@ -324,6 +445,43 @@ export default function CasesPage() {
         </div>
       )}
 
+      {/* Sort Controls */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+          <div className="flex items-center space-x-4">
+            <label className="text-sm font-medium text-foreground">
+              Sort by:
+            </label>
+            <select
+              value={`${sortField}-${sortDirection}`}
+              onChange={async (e) => {
+                const [field, direction] = e.target.value.split('-');
+                const newField = field as CasesSortField;
+                const newDirection = direction as SortDirection;
+                setSortField(newField);
+                setSortDirection(newDirection);
+                await savePreferences(newField, newDirection);
+              }}
+              className="px-3 py-2 border border-border rounded-lg bg-input text-foreground focus:ring-2 focus:ring-ring focus:border-ring"
+            >
+              <option value="created_at-desc">Datum kreiranja (najnoviji)</option>
+              <option value="created_at-asc">Datum kreiranja (najstariji)</option>
+              <option value="updated_at-desc">Datum ažuriranja (najnoviji)</option>
+              <option value="updated_at-asc">Datum ažuriranja (najstariji)</option>
+              <option value="title-asc">Naziv predmeta (A-Z)</option>
+              <option value="title-desc">Naziv predmeta (Z-A)</option>
+              <option value="client_name-asc">Klijent (A-Z)</option>
+              <option value="client_name-desc">Klijent (Z-A)</option>
+              <option value="status-asc">Status (A-Z)</option>
+              <option value="status-desc">Status (Z-A)</option>
+            </select>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {cases.length} predmeta
+          </div>
+        </div>
+      </div>
+
       {/* Cases Table */}
       <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
         {loading ? (
@@ -342,17 +500,50 @@ export default function CasesPage() {
             <table className="w-full min-w-[600px]">
               <thead className="bg-muted border-b border-border">
                 <tr>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {t('cases.caseTitle')}
+                  <th 
+                    className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('title')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>{t('cases.caseTitle')}</span>
+                      {getSortIcon('title')}
+                    </div>
                   </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
-                    {t('cases.linkedClient')}
+                  <th 
+                    className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('client_name')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>{t('cases.linkedClient')}</span>
+                      {getSortIcon('client_name')}
+                    </div>
                   </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {t('common.status')}
+                  <th 
+                    className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>{t('common.status')}</span>
+                      {getSortIcon('status')}
+                    </div>
                   </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                    {t('cases.createdDate')}
+                  <th 
+                    className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('created_at')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>{t('cases.createdDate')}</span>
+                      {getSortIcon('created_at')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('updated_at')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Datum ažuriranja</span>
+                      {getSortIcon('updated_at')}
+                    </div>
                   </th>
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     {t('common.actions')}
@@ -408,6 +599,12 @@ export default function CasesPage() {
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
                         {formatDate(caseItem.created_at)}
+                      </div>
+                    </td>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
+                        {caseItem.updated_at ? formatDate(caseItem.updated_at) : '-'}
                       </div>
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">

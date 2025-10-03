@@ -182,12 +182,12 @@ export default function CalendarPage() {
       const isoDate = new Date(selectedDate).toISOString();
 
       if (editingDeadline) {
-        // Update existing deadline
+        // Update existing deadline - only send fields that user can edit
         await updateWithUserId(supabase, 'deadlines', 'id', editingDeadline.id, {
           title: newEvent.title,
           case_id: newEvent.case_id,
-          due_date: isoDate,
-          updated_at: new Date().toISOString()
+          due_date: isoDate
+          // updated_at will be automatically set by database trigger
         });
       } else {
         // Add new deadline with user_id

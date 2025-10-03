@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -14,7 +14,7 @@ export default function RouteProtection({ children }: RouteProtectionProps) {
   const pathname = usePathname();
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/register'];
+  const publicRoutes = useMemo(() => ['/login', '/register'], []);
   const isPublicRoute = publicRoutes.includes(pathname);
 
   useEffect(() => {

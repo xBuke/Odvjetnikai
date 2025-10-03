@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Plus, 
@@ -41,7 +41,7 @@ interface Client {
 export default function ClientsPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { session } = useAuth();
+  const { } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -71,12 +71,12 @@ export default function ClientsPage() {
 
 
   // Load clients from Supabase
-  const loadClients = async () => {
+  const loadClients = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const data = await selectWithUserId(supabase, 'clients');
+      const data = await selectWithUserId(supabase, 'clients') as unknown as Client[];
       setClients(data || []);
     } catch (err) {
       console.error('Error loading clients:', err);
@@ -86,12 +86,12 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   // Load clients on component mount
   useEffect(() => {
     loadClients();
-  }, []);
+  }, [loadClients]);
 
   // Filter clients based on search term
   const filteredClients = clients.filter(client =>

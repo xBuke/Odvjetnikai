@@ -1,6 +1,7 @@
 'use client';
 
 import { Menu, LogOut, User } from 'lucide-react';
+import { useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,7 +50,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
   };
 
   // Get page title based on current path
-  const getPageTitle = () => {
+  const getPageTitle = useMemo(() => {
     const pathSegments = pathname.split('/').filter(Boolean);
     
     if (pathSegments.length === 0) return t('nav.dashboard');
@@ -63,7 +64,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
     }
     
     return t(`nav.${lastSegment}`);
-  };
+  }, [pathname, t]);
 
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-64 bg-background/95 backdrop-blur-md border-b border-border px-4 py-4 lg:px-6 z-40 shadow-sm">
@@ -79,7 +80,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
           
           {/* Page title - dynamic based on current page */}
           <h1 className="ml-4 lg:ml-0 text-2xl font-bold text-foreground font-serif">
-            {getPageTitle()}
+            {getPageTitle}
           </h1>
         </div>
 

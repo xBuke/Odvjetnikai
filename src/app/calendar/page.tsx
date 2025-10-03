@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Calendar, momentLocalizer, Views, View } from 'react-big-calendar';
 import moment from 'moment';
 import { Plus, Loader2, AlertCircle, Edit, Trash2, Calendar as CalendarIcon } from 'lucide-react';
@@ -99,9 +99,9 @@ export default function CalendarPage() {
   );
 
   // Load cases from Supabase
-  const loadCases = async () => {
+  const loadCases = useCallback(async () => {
     try {
-      const data = await selectWithUserId(supabase, 'cases');
+      const data = await selectWithUserId(supabase, 'cases') as unknown as Case[];
       setCases(data || []);
     } catch (err) {
       console.error('Error loading cases:', err);
@@ -109,15 +109,15 @@ export default function CalendarPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  };
+  }, [showToast]);
 
   // Load deadlines from Supabase with case information
-  const loadDeadlines = async () => {
+  const loadDeadlines = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const data = await selectWithUserId(supabase, 'deadlines', {}, '*, cases(title)');
+      const data = await selectWithUserId(supabase, 'deadlines', {}, '*, cases(title)') as unknown as Deadline[];
       setDeadlines(data || []);
 
       // Transform deadlines to events for the calendar
@@ -146,7 +146,7 @@ export default function CalendarPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   // Load data on component mount
   useEffect(() => {
@@ -154,7 +154,7 @@ export default function CalendarPage() {
       await Promise.all([loadCases(), loadDeadlines()]);
     };
     loadData();
-  }, [user]);
+  }, [user, loadCases, loadDeadlines]);
 
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -281,7 +281,7 @@ export default function CalendarPage() {
     setNewEvent({ title: '', case_id: '', due_date: '', time: '' });
   };
 
-  const eventStyleGetter = (_event: Event) => {
+  const eventStyleGetter = () => {
     const backgroundColor = '#3174ad';
     const borderColor = '#3174ad';
     return {

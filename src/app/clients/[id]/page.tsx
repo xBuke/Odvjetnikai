@@ -53,7 +53,7 @@ export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
   const clientId = params.id as string;
-  const { session } = useAuth();
+  const { } = useAuth();
 
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
@@ -138,7 +138,7 @@ export default function ClientDetailPage() {
       setError(null);
 
       // Fetch client data from Supabase
-      const data = await selectSingleWithUserId(supabase, 'clients', 'id', clientId);
+      const data = await selectSingleWithUserId(supabase, 'clients', 'id', clientId) as unknown as Client;
       setClient(data);
     } catch (err) {
       console.error('Error loading client:', err);
@@ -146,7 +146,7 @@ export default function ClientDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [clientId, session?.user?.id]);
+  }, [clientId]);
 
   useEffect(() => {
     loadClientData();

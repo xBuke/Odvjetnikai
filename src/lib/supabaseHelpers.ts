@@ -37,8 +37,8 @@ export async function getUserOrThrow(supabase: SupabaseClient) {
 export async function insertWithUserId(
   supabase: SupabaseClient, 
   table: string, 
-  data: any
-): Promise<any[]> {
+  data: Record<string, unknown> | Record<string, unknown>[]
+): Promise<Record<string, unknown>[]> {
   const user = await getUserOrThrow(supabase);
   
   // Ensure data is an array for consistent handling
@@ -75,9 +75,9 @@ export async function insertWithUserId(
 export async function selectWithUserId(
   supabase: SupabaseClient, 
   table: string, 
-  filters: Record<string, any> = {},
+  filters: Record<string, unknown> = {},
   selectColumns: string = '*'
-): Promise<any[]> {
+): Promise<Record<string, unknown>[]> {
   const user = await getUserOrThrow(supabase);
   
   let query = supabase
@@ -99,7 +99,7 @@ export async function selectWithUserId(
     throw new Error(error.message ?? "Greška u Supabase upitu");
   }
   
-  return data || [];
+  return (data as unknown as Record<string, unknown>[]) || [];
 }
 
 /**
@@ -117,8 +117,8 @@ export async function updateWithUserId(
   table: string, 
   idField: string, 
   idValue: string | number, 
-  updates: any
-): Promise<any[]> {
+  updates: Record<string, unknown>
+): Promise<Record<string, unknown>[]> {
   const user = await getUserOrThrow(supabase);
   
   const { data, error } = await supabase
@@ -150,7 +150,7 @@ export async function deleteWithUserId(
   table: string, 
   idField: string, 
   idValue: string | number
-): Promise<any[]> {
+): Promise<Record<string, unknown>[]> {
   const user = await getUserOrThrow(supabase);
   
   const { data, error } = await supabase
@@ -184,7 +184,7 @@ export async function selectSingleWithUserId(
   idField: string, 
   idValue: string | number,
   selectColumns: string = '*'
-): Promise<any> {
+): Promise<Record<string, unknown>> {
   const user = await getUserOrThrow(supabase);
   
   const { data, error } = await supabase
@@ -199,7 +199,7 @@ export async function selectSingleWithUserId(
     throw new Error(error.message ?? "Greška u Supabase upitu");
   }
   
-  return data;
+  return data as unknown as Record<string, unknown>;
 }
 
 /**
@@ -213,8 +213,8 @@ export async function selectSingleWithUserId(
 export async function insertAndReturnWithUserId(
   supabase: SupabaseClient, 
   table: string, 
-  data: any
-): Promise<any> {
+  data: Record<string, unknown>
+): Promise<Record<string, unknown>> {
   const user = await getUserOrThrow(supabase);
   
   const { data: result, error } = await supabase

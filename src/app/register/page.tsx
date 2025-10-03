@@ -5,10 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Eye, EyeOff, Mail, Lock, UserPlus, User } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, UserPlus } from 'lucide-react';
 
 export default function RegisterPage() {
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -18,7 +17,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { signUp, checkUsernameAvailability } = useAuth();
+  const { signUp } = useAuth();
   const router = useRouter();
   
   // Safe access to language context
@@ -37,7 +36,7 @@ export default function RegisterPage() {
     setSuccess('');
 
     // Validation
-    if (!username || !email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword) {
       setError(t('auth.allFieldsRequired'));
       return;
     }
@@ -55,23 +54,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // First check if username is available
-      const { available, error: availabilityError } = await checkUsernameAvailability(username);
-      
-      if (availabilityError) {
-        setError('Greška pri provjeri korisničkog imena');
-        setLoading(false);
-        return;
-      }
-      
-      if (!available) {
-        setError('Korisničko ime zauzeto');
-        setLoading(false);
-        return;
-      }
-
-      // If username is available, proceed with signup
-      const { error } = await signUp(email, password, username);
+      const { error } = await signUp(email, password);
       
       if (error) {
         setError(error.message);
@@ -105,29 +88,6 @@ export default function RegisterPage() {
 
         <div className="bg-card rounded-lg shadow-lg p-8 border border-border">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Username Field */}
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-foreground mb-2">
-                {t('auth.username')}
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
-                  placeholder={t('auth.enterUsername')}
-                />
-              </div>
-            </div>
-
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">

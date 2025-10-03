@@ -24,14 +24,6 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { selectSingleWithUserId } from '@/lib/supabaseHelpers';
 
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  oib: string;
-  notes: string;
-}
 
 interface Case {
   id: string;
@@ -60,7 +52,7 @@ interface TimelineEvent {
 export default function CaseDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { session } = useAuth();
+  const { } = useAuth();
   const caseId = params.id as string;
 
   const [caseData, setCaseData] = useState<Case | null>(null);
@@ -136,7 +128,7 @@ export default function CaseDetailPage() {
       setError(null);
 
       // Fetch case with client information from Supabase
-      const caseData = await selectSingleWithUserId(supabase, 'cases', 'id', caseId, '*, clients(name, email, phone, oib, notes)');
+      const caseData = await selectSingleWithUserId(supabase, 'cases', 'id', caseId, '*, clients(name, email, phone, oib, notes)') as unknown as Case;
       setCaseData(caseData);
     } catch (err) {
       console.error('Error loading case:', err);

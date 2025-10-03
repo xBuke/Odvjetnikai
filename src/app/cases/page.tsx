@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Plus, 
@@ -60,7 +60,7 @@ interface CaseWithClient extends Case {
 export default function CasesPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { session } = useAuth();
+  const { } = useAuth();
   
   // Safe access to language context
   let t: (key: string) => string;
@@ -89,9 +89,9 @@ export default function CasesPage() {
 
 
   // Load clients from Supabase
-  const loadClients = async () => {
+  const loadClients = useCallback(async () => {
     try {
-      const data = await selectWithUserId(supabase, 'clients');
+      const data = await selectWithUserId(supabase, 'clients') as unknown as Client[];
       setClients(data || []);
     } catch (err) {
       console.error('Error loading clients:', err);
@@ -99,23 +99,23 @@ export default function CasesPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  };
+  }, [showToast]);
 
 
   // Load cases from Supabase with client information
-  const loadCases = async () => {
+  const loadCases = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const data = await selectWithUserId(supabase, 'cases', {}, 'id, title, status, notes, created_at, clients(name)');
+      const data = await selectWithUserId(supabase, 'cases', {}, 'id, title, status, notes, created_at, clients(name)') as unknown as Record<string, unknown>[];
 
       // Transform data to include clientName and statusColor
       const casesWithClient: CaseWithClient[] = (data || []).map(caseItem => ({
         ...caseItem,
-        clientName: caseItem.clients?.name || 'Nepoznati klijent',
-        statusColor: getStatusColor(caseItem.status)
-      }));
+        clientName: (caseItem.clients as Record<string, unknown>)?.name as string || 'Nepoznati klijent',
+        statusColor: getStatusColor(caseItem.status as string)
+      } as CaseWithClient));
 
       setCases(casesWithClient);
     } catch (err) {
@@ -126,7 +126,7 @@ export default function CasesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   // Get status color based on status
   const getStatusColor = (status: string): 'blue' | 'yellow' | 'green' => {
@@ -148,7 +148,7 @@ export default function CasesPage() {
       await Promise.all([loadClients(), loadCases()]);
     };
     loadData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadClients, loadCases]);
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

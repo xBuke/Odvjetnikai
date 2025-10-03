@@ -11,8 +11,6 @@ import {
   XCircle
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { supabase } from '@/lib/supabaseClient';
-import { useEffect } from 'react';
 
 export default function Dashboard() {
 

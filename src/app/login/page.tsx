@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Eye, EyeOff, User, Lock, LogIn } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, LogIn } from 'lucide-react';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    if (!username || !password) {
+    if (!email || !password) {
       setError(t('auth.fillInAllFields'));
       return;
     }
@@ -39,7 +39,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error } = await signIn(username, password);
+      const { error } = await signIn(email, password);
       
       if (error) {
         setError(error.message);
@@ -70,25 +70,25 @@ export default function LoginPage() {
 
         <div className="bg-card rounded-lg shadow-lg p-8 border border-border">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Username Field */}
+            {/* Email Field */}
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-foreground mb-2">
-                {t('auth.username')}
+              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
+                {t('auth.emailAddress')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-muted-foreground" />
+                  <Mail className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
                   required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="block w-full pl-10 pr-3 py-3 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
-                  placeholder={t('auth.enterUsername')}
+                  placeholder={t('auth.enterEmail')}
                 />
               </div>
             </div>

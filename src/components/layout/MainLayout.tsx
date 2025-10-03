@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import Breadcrumb from '../ui/Breadcrumb';
@@ -20,11 +19,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
   };
 
   // Public routes that don't need the main layout
-  const publicRoutes = ['/login', '/register'];
+  const publicRoutes = useMemo(() => ['/login', '/register'], []);
   const isPublicRoute = publicRoutes.includes(pathname);
 
   // Generate breadcrumb items based on current path
-  const getBreadcrumbItems = () => {
+  const getBreadcrumbItems = useMemo(() => {
     const pathSegments = pathname.split('/').filter(Boolean);
     const items = [];
 
@@ -48,7 +47,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     }
 
     return items;
-  };
+  }, [pathname]);
 
   // For public routes (login/register), render without sidebar and topbar
   if (isPublicRoute) {
@@ -76,7 +75,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             {/* Breadcrumb */}
             {pathname !== '/' && (
               <div className="mb-6">
-                <Breadcrumb items={getBreadcrumbItems()} />
+                <Breadcrumb items={getBreadcrumbItems} />
               </div>
             )}
             <div className="w-full overflow-hidden">

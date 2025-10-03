@@ -94,7 +94,7 @@ export default function BillingPage() {
   }
 
   // Get user session for multitenancy
-  const { user, session } = useAuth();
+  const { } = useAuth();
 
   // State management
   const [billingEntries, setBillingEntries] = useState<BillingEntryWithDetails[]>([]);
@@ -124,7 +124,7 @@ export default function BillingPage() {
   // Load clients from Supabase
   const loadClients = useCallback(async () => {
     try {
-      const data = await selectWithUserId(supabase, 'clients') as Client[];
+      const data = await selectWithUserId(supabase, 'clients') as unknown as Client[];
       setClients(data || []);
     } catch (err) {
       console.error('Error loading clients:', err);
@@ -132,12 +132,12 @@ export default function BillingPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  }, [t]);
+  }, [showToast]);
 
   // Load cases from Supabase
   const loadCases = useCallback(async () => {
     try {
-      const data = await selectWithUserId(supabase, 'cases') as Case[];
+      const data = await selectWithUserId(supabase, 'cases') as unknown as Case[];
       setCases(data || []);
     } catch (err) {
       console.error('Error loading cases:', err);
@@ -145,7 +145,7 @@ export default function BillingPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  }, [t]);
+  }, [showToast]);
 
   // Load billing entries from Supabase with client and case joins
   const loadBillingEntries = useCallback(async () => {
@@ -153,15 +153,15 @@ export default function BillingPage() {
       setLoading(true);
       setError(null);
       
-      const data = await selectWithUserId(supabase, 'billing_entries', {}, '*, clients(name), cases(title)') as any[];
+      const data = await selectWithUserId(supabase, 'billing_entries', {}, '*, clients(name), cases(title)') as unknown as Record<string, unknown>[];
 
       // Transform data to include clientName, caseName, and total
       const entriesWithDetails: BillingEntryWithDetails[] = (data || []).map(entry => ({
         ...entry,
-        clientName: entry.clients?.name || t('billing.unknownClient'),
-        caseName: entry.cases?.title || t('billing.unknownCase'),
-        total: entry.hours * entry.rate
-      }));
+        clientName: (entry.clients as Record<string, unknown>)?.name as string || t('billing.unknownClient'),
+        caseName: (entry.cases as Record<string, unknown>)?.title as string || t('billing.unknownCase'),
+        total: (entry.hours as number) * (entry.rate as number)
+      } as BillingEntryWithDetails));
 
       setBillingEntries(entriesWithDetails);
     } catch (err) {
@@ -172,7 +172,7 @@ export default function BillingPage() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [showToast, t]);
 
   // Load all data on component mount
   useEffect(() => {

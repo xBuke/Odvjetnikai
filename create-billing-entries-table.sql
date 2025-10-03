@@ -1,7 +1,9 @@
 -- Create billing_entries table for time tracking and billing
 -- Run this SQL in your Supabase SQL Editor
+-- This migration is idempotent and safe to rerun
+-- NOTE: This table is also created in database-setup.sql - this file is for standalone use
 
--- Create billing_entries table
+-- Create billing_entries table if it doesn't exist
 CREATE TABLE IF NOT EXISTS billing_entries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -23,7 +25,12 @@ CREATE INDEX IF NOT EXISTS idx_billing_entries_created_at ON billing_entries(cre
 -- Enable Row Level Security
 ALTER TABLE billing_entries ENABLE ROW LEVEL SECURITY;
 
--- Create policies for billing_entries
+-- Create policies for billing_entries (drop existing first for idempotency)
+DROP POLICY IF EXISTS "Users can view their own billing entries" ON billing_entries;
+DROP POLICY IF EXISTS "Users can insert their own billing entries" ON billing_entries;
+DROP POLICY IF EXISTS "Users can update their own billing entries" ON billing_entries;
+DROP POLICY IF EXISTS "Users can delete their own billing entries" ON billing_entries;
+
 CREATE POLICY "Users can view their own billing entries" ON billing_entries
     FOR SELECT USING (auth.uid() = user_id);
 

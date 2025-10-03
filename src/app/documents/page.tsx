@@ -31,6 +31,7 @@ import {
 } from '@/lib/supabaseHelpers';
 import { getDocumentTypeOptions, getDocumentLabel, type DocumentType } from '@/lib/documentTypes';
 import { useUserPreferences, SortField, SortDirection } from '@/lib/userPreferences';
+import { validateFile, validateDocumentType, getFileValidationErrorMessage } from '@/lib/fileValidation';
 
 interface Case {
   id: string;
@@ -249,6 +250,15 @@ export default function DocumentsPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file before setting it
+      const validation = validateFile(file);
+      if (!validation.isValid) {
+        showToast(getFileValidationErrorMessage(validation.error || ''), 'error');
+        // Clear the file input
+        e.target.value = '';
+        return;
+      }
+      
       setSelectedFile(file);
       // Auto-fill document name if not already set
       if (!uploadFormData.name) {
@@ -265,18 +275,48 @@ export default function DocumentsPage() {
     e.preventDefault();
     
     if (!selectedFile) {
-      alert('Please select a file to upload');
+      showToast('Molimo odaberite datoteku za upload', 'error');
       return;
     }
 
     if (!uploadFormData.name.trim()) {
-      alert('Please enter a document name');
+      showToast('Molimo unesite naziv dokumenta', 'error');
+      return;
+    }
+
+    // Validate document type if provided
+    if (uploadFormData.type && !validateDocumentType(uploadFormData.type)) {
+      showToast('Neispravan tip dokumenta. Molimo odaberite valjan tip.', 'error');
+      return;
+    }
+
+    // Re-validate file before upload (additional safety check)
+    const fileValidation = validateFile(selectedFile);
+    if (!fileValidation.isValid) {
+      showToast(getFileValidationErrorMessage(fileValidation.error || ''), 'error');
       return;
     }
 
     try {
       setSubmitting(true);
       setError(null);
+
+      // Server-side validation (additional security check)
+      const validationFormData = new FormData();
+      validationFormData.append('file', selectedFile);
+      if (uploadFormData.type) {
+        validationFormData.append('documentType', uploadFormData.type);
+      }
+
+      const validationResponse = await fetch('/api/upload/validate', {
+        method: 'POST',
+        body: validationFormData
+      });
+
+      if (!validationResponse.ok) {
+        const validationError = await validationResponse.json();
+        throw new Error(validationError.error || 'Server-side validation failed');
+      }
 
       // Check if Supabase is properly configured
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -786,8 +826,11 @@ export default function DocumentsPage() {
                   id="file"
                   onChange={handleFileSelect}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-input text-foreground"
-                  accept=".pdf,.doc,.docx,.txt,.xlsx,.xls,.png,.jpg,.jpeg"
+                  accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Dozvoljeni tipovi: PDF, slike (JPG, PNG, GIF, WebP), tekstualne datoteke (TXT, CSV), Microsoft Office dokumenti (DOC, DOCX, XLS, XLSX, PPT, PPTX). Maksimalna veličina: 50MB.
+                </p>
                 {selectedFile && (
                   <div className="mt-2 p-2 bg-muted rounded-lg">
                     <p className="text-sm text-foreground">

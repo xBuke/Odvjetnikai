@@ -10,8 +10,13 @@ ALTER TABLE cases ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id
 -- Add user_id column to documents table
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 
--- Add user_id column to billing table
-ALTER TABLE billing ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+-- Add user_id column to billing table (if it exists)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'billing') THEN
+        ALTER TABLE billing ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- Add user_id column to calendar_events table
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
@@ -20,7 +25,13 @@ ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES aut
 CREATE INDEX IF NOT EXISTS idx_clients_user_id ON clients(user_id);
 CREATE INDEX IF NOT EXISTS idx_cases_user_id ON cases(user_id);
 CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id);
-CREATE INDEX IF NOT EXISTS idx_billing_user_id ON billing(user_id);
+-- Create index for billing table (if it exists)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'billing') THEN
+        CREATE INDEX IF NOT EXISTS idx_billing_user_id ON billing(user_id);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_calendar_events_user_id ON calendar_events(user_id);
 
 -- Update existing records to have a default user_id (you may want to set this to a specific user)
@@ -81,18 +92,30 @@ CREATE POLICY "Users can update their own documents" ON documents
 CREATE POLICY "Users can delete their own documents" ON documents
     FOR DELETE USING (auth.uid() = user_id);
 
--- Billing policies
-CREATE POLICY "Users can view their own billing" ON billing
-    FOR SELECT USING (auth.uid() = user_id);
+-- Billing policies (if billing table exists)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'billing') THEN
+        -- Drop existing policies first for idempotency
+        DROP POLICY IF EXISTS "Users can view their own billing" ON billing;
+        DROP POLICY IF EXISTS "Users can insert their own billing" ON billing;
+        DROP POLICY IF EXISTS "Users can update their own billing" ON billing;
+        DROP POLICY IF EXISTS "Users can delete their own billing" ON billing;
+        
+        -- Create new policies
+        CREATE POLICY "Users can view their own billing" ON billing
+            FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their own billing" ON billing
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+        CREATE POLICY "Users can insert their own billing" ON billing
+            FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own billing" ON billing
-    FOR UPDATE USING (auth.uid() = user_id);
+        CREATE POLICY "Users can update their own billing" ON billing
+            FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can delete their own billing" ON billing
-    FOR DELETE USING (auth.uid() = user_id);
+        CREATE POLICY "Users can delete their own billing" ON billing
+            FOR DELETE USING (auth.uid() = user_id);
+    END IF;
+END $$;
 
 -- Calendar events policies
 CREATE POLICY "Users can view their own calendar events" ON calendar_events

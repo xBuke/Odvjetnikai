@@ -31,12 +31,17 @@ CREATE TRIGGER update_documents_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Create triggers for billing table
-DROP TRIGGER IF EXISTS update_billing_updated_at ON billing;
-CREATE TRIGGER update_billing_updated_at
-    BEFORE UPDATE ON billing
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+-- Create triggers for billing table (if it exists)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'billing') THEN
+        DROP TRIGGER IF EXISTS update_billing_updated_at ON billing;
+        CREATE TRIGGER update_billing_updated_at
+            BEFORE UPDATE ON billing
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 -- Create triggers for calendar_events table
 DROP TRIGGER IF EXISTS update_calendar_events_updated_at ON calendar_events;
@@ -53,8 +58,13 @@ CREATE TRIGGER update_deadlines_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Create triggers for billing_entries table (if it exists)
-DROP TRIGGER IF EXISTS update_billing_entries_updated_at ON billing_entries;
-CREATE TRIGGER update_billing_entries_updated_at
-    BEFORE UPDATE ON billing_entries
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'billing_entries') THEN
+        DROP TRIGGER IF EXISTS update_billing_entries_updated_at ON billing_entries;
+        CREATE TRIGGER update_billing_entries_updated_at
+            BEFORE UPDATE ON billing_entries
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;

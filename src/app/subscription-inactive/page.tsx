@@ -1,12 +1,14 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AlertCircle, CreditCard, Mail, Phone } from 'lucide-react';
 
 export default function SubscriptionInactivePage() {
   const { user, signOut } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -45,21 +47,21 @@ export default function SubscriptionInactivePage() {
               <AlertCircle className="h-6 w-6 text-red-600" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Subscription Inactive
+              {t('subscription.inactive')}
             </h1>
             <p className="text-gray-600">
-              Your subscription is currently inactive. Please renew to continue using our services.
+              {t('subscription.inactiveDescription')}
             </p>
           </div>
 
           {/* User Info */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-2">Account Information</h3>
+            <h3 className="text-sm font-medium text-gray-900 mb-2">{t('subscription.accountInfo')}</h3>
             <p className="text-sm text-gray-600">
               <strong>Email:</strong> {user.email}
             </p>
             <p className="text-sm text-gray-600">
-              <strong>Status:</strong> <span className="text-red-600">Inactive</span>
+              <strong>{t('subscription.status')}:</strong> <span className="text-red-600">{t('subscription.inactiveStatus')}</span>
             </p>
           </div>
 
@@ -70,7 +72,7 @@ export default function SubscriptionInactivePage() {
               className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               <CreditCard className="h-4 w-4 mr-2" />
-              Renew Subscription
+              {t('subscription.renewSubscription')}
             </button>
 
             <button
@@ -81,14 +83,14 @@ export default function SubscriptionInactivePage() {
               {loading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
               ) : (
-                'Sign Out'
+                t('subscription.signOut')
               )}
             </button>
           </div>
 
           {/* Support Section */}
           <div className="mt-8 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Need Help?</h3>
+            <h3 className="text-sm font-medium text-gray-900 mb-3">{t('subscription.needHelp')}</h3>
             <div className="space-y-2">
               <div className="flex items-center text-sm text-gray-600">
                 <Mail className="h-4 w-4 mr-2" />
@@ -96,12 +98,12 @@ export default function SubscriptionInactivePage() {
                   href="mailto:support@lawfirmsaas.com" 
                   className="hover:text-blue-600 transition-colors"
                 >
-                  support@lawfirmsaas.com
+                  {t('subscription.supportEmail')}
                 </a>
               </div>
               <div className="flex items-center text-sm text-gray-600">
                 <Phone className="h-4 w-4 mr-2" />
-                <span>+1 (555) 123-4567</span>
+                <span>{t('subscription.supportPhone')}</span>
               </div>
             </div>
           </div>
@@ -109,8 +111,7 @@ export default function SubscriptionInactivePage() {
           {/* Additional Information */}
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-500">
-              If you believe this is an error, please contact our support team.
-              We're here to help you get back to managing your law practice.
+              {t('subscription.errorMessage')}
             </p>
           </div>
         </div>

@@ -23,6 +23,8 @@ const translations = {
     'nav.documents': 'Documents',
     'nav.calendar': 'Calendar',
     'nav.billing': 'Billing',
+    'nav.pricing': 'Pricing',
+    'nav.subscription-inactive': 'Subscription Inactive',
     
     // Common
     'common.add': 'Add',
@@ -267,6 +269,19 @@ const translations = {
     'priority.high': 'High',
     'priority.medium': 'Medium',
     'priority.low': 'Low',
+    
+    // Subscription
+    'subscription.inactive': 'Subscription Inactive',
+    'subscription.inactiveDescription': 'Your subscription is currently inactive. Please renew to continue using our services.',
+    'subscription.accountInfo': 'Account Information',
+    'subscription.status': 'Status',
+    'subscription.inactiveStatus': 'Inactive',
+    'subscription.renewSubscription': 'Renew Subscription',
+    'subscription.signOut': 'Sign Out',
+    'subscription.needHelp': 'Need Help?',
+    'subscription.supportEmail': 'support@lawfirmsaas.com',
+    'subscription.supportPhone': '+1 (555) 123-4567',
+    'subscription.errorMessage': 'If you believe this is an error, please contact our support team. We\'re here to help you get back to managing your law practice.',
   },
   hr: {
     // Navigation
@@ -276,6 +291,8 @@ const translations = {
     'nav.documents': 'Dokumenti',
     'nav.calendar': 'Kalendar',
     'nav.billing': 'Naplata',
+    'nav.pricing': 'Cijene',
+    'nav.subscription-inactive': 'Neaktivna pretplata',
     
     // Common
     'common.add': 'Dodaj',
@@ -520,6 +537,19 @@ const translations = {
     'priority.high': 'Visok',
     'priority.medium': 'Srednji',
     'priority.low': 'Nizak',
+    
+    // Subscription
+    'subscription.inactive': 'Neaktivna pretplata',
+    'subscription.inactiveDescription': 'Vaša pretplata je trenutno neaktivna. Molimo obnovite je da biste nastavili koristiti naše usluge.',
+    'subscription.accountInfo': 'Informacije o računu',
+    'subscription.status': 'Status',
+    'subscription.inactiveStatus': 'Neaktivan',
+    'subscription.renewSubscription': 'Obnovi pretplatu',
+    'subscription.signOut': 'Odjava',
+    'subscription.needHelp': 'Trebate pomoć?',
+    'subscription.supportEmail': 'support@lawfirmsaas.com',
+    'subscription.supportPhone': '+1 (555) 123-4567',
+    'subscription.errorMessage': 'Ako smatrate da je ovo greška, molimo kontaktirajte naš tim za podršku. Ovdje smo da vam pomognemo da se vratite upravljanju svojom odvjetničkom praksom.',
   }
 };
 

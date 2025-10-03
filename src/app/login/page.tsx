@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Eye, EyeOff, Mail, Lock, Scale, UserPlus, CreditCard } from 'lucide-react';
@@ -28,11 +29,30 @@ export default function AuthPage() {
     t = (key: string) => key;
   }
 
+  // Price formatting function - always use EUR
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-EU', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  // Get price from environment variable or fallback
+  const monthlyPrice = process.env.NEXT_PUBLIC_PRICE_PER_MONTH 
+    ? parseFloat(process.env.NEXT_PUBLIC_PRICE_PER_MONTH) 
+    : 147; // Fallback to €147
+
   // Handle URL parameter to set initial tab
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab === 'register') {
       setActiveTab('register');
+      setError(''); // Reset error when switching to register tab
+    } else if (tab === 'login') {
+      setActiveTab('login');
+      setError(''); // Reset error when switching to login tab
     }
   }, [searchParams]);
 
@@ -40,8 +60,22 @@ export default function AuthPage() {
     e.preventDefault();
     setError('');
 
+    // Custom validation
     if (!email || !password) {
       setError(t('auth.fillInAllFields'));
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Molimo unesite valjanu adresu e-pošte');
+      return;
+    }
+
+    // Password validation
+    if (password.length < 8) {
+      setError('Lozinka mora imati barem 8 znakova');
       return;
     }
 
@@ -74,8 +108,22 @@ export default function AuthPage() {
     e.preventDefault();
     setError('');
 
+    // Custom validation
     if (!email || !password) {
       setError(t('auth.fillInAllFields'));
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Molimo unesite valjanu adresu e-pošte');
+      return;
+    }
+
+    // Password validation
+    if (password.length < 8) {
+      setError('Lozinka mora imati barem 8 znakova');
       return;
     }
 
@@ -121,7 +169,10 @@ export default function AuthPage() {
           {/* Tabs */}
           <div className="flex border-b border-slate-200 dark:border-slate-700">
             <button
-              onClick={() => setActiveTab('login')}
+              onClick={() => {
+                setActiveTab('login');
+                setError('');
+              }}
               className={`flex-1 py-4 px-6 text-sm font-medium transition-colors ${
                 activeTab === 'login'
                   ? 'text-gold border-b-2 border-gold bg-gold/5'
@@ -134,7 +185,10 @@ export default function AuthPage() {
               </div>
             </button>
             <button
-              onClick={() => setActiveTab('register')}
+              onClick={() => {
+                setActiveTab('register');
+                setError('');
+              }}
               className={`flex-1 py-4 px-6 text-sm font-medium transition-colors ${
                 activeTab === 'register'
                   ? 'text-gold border-b-2 border-gold bg-gold/5'
@@ -167,7 +221,6 @@ export default function AuthPage() {
                       name="email"
                       type="email"
                       autoComplete="email"
-                      required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent transition-all duration-200"
@@ -190,7 +243,6 @@ export default function AuthPage() {
                       name="password"
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
-                      required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="block w-full pl-10 pr-12 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent transition-all duration-200"
@@ -250,7 +302,6 @@ export default function AuthPage() {
                       name="email"
                       type="email"
                       autoComplete="email"
-                      required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent transition-all duration-200"
@@ -273,7 +324,6 @@ export default function AuthPage() {
                       name="password"
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="new-password"
-                      required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="block w-full pl-10 pr-12 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent transition-all duration-200"
@@ -304,7 +354,7 @@ export default function AuthPage() {
                         7-dnevni besplatni trial
                       </h4>
                       <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                        Počnite odmah s 7-dnevnim besplatnim trial-om. Nakon isteka, automatski će se naplatiti €147/mjesec ako se ne otkaže.
+                        Počnite odmah s 7-dnevnim besplatnim trial-om. Nakon isteka, automatski će se naplatiti {formatPrice(monthlyPrice)}/mjesec ako se ne otkaže.
                       </p>
                     </div>
                   </div>
@@ -337,7 +387,15 @@ export default function AuthPage() {
                 </button>
 
                 <p className="text-xs text-muted-foreground text-center">
-                  Registracijom se slažete s našim uvjetima korištenja i politikom privatnosti.
+                  Registracijom se slažete s našim{' '}
+                  <Link href="/terms" className="text-gold hover:text-gold-dark underline transition-colors">
+                    uvjetima korištenja
+                  </Link>
+                  {' '}i{' '}
+                  <Link href="/privacy" className="text-gold hover:text-gold-dark underline transition-colors">
+                    politikom privatnosti
+                  </Link>
+                  .
                 </p>
               </form>
             )}

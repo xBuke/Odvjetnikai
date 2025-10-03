@@ -120,7 +120,7 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast, sortField, sortDirection]);
+  }, [sortField, sortDirection]); // Remove showToast from deps to prevent infinite loop
 
   // Load data on component mount
   useEffect(() => {
@@ -130,14 +130,14 @@ export default function ClientsPage() {
       await loadClients();
     };
     loadData();
-  }, [loadUserPreferences, loadClients]);
+  }, []); // Empty dependency array to run only once on mount
 
   // Load clients when preferences are loaded and sorting changes
   useEffect(() => {
     if (preferencesLoaded) {
       loadClients();
     }
-  }, [preferencesLoaded, sortField, sortDirection, loadClients]);
+  }, [preferencesLoaded, sortField, sortDirection]); // Remove loadClients from deps to prevent infinite loop
 
   // Handle sorting
   const handleSort = async (field: ClientsSortField) => {

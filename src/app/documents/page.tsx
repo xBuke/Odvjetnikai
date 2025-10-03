@@ -133,7 +133,7 @@ export default function DocumentsPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  }, [user, showToast]);
+  }, [user]); // Remove showToast from deps to prevent infinite loop
 
   // Load user preferences from Supabase
   const loadUserPreferences = useCallback(async () => {
@@ -208,7 +208,7 @@ export default function DocumentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast, sortField, sortDirection]);
+  }, [sortField, sortDirection]); // Remove showToast from deps to prevent infinite loop
 
   // Load data on component mount
   useEffect(() => {
@@ -220,14 +220,14 @@ export default function DocumentsPage() {
       };
       loadData();
     }
-  }, [user, loadUserPreferences, loadCases, loadDocuments]);
+  }, [user]); // Only depend on user to prevent infinite loops
 
   // Load documents when preferences are loaded and sorting changes
   useEffect(() => {
     if (preferencesLoaded && user) {
       loadDocuments();
     }
-  }, [preferencesLoaded, sortField, sortDirection, loadDocuments, user]);
+  }, [preferencesLoaded, sortField, sortDirection, user]); // Remove loadDocuments from deps to prevent infinite loop
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadFormData, setUploadFormData] = useState({
@@ -372,6 +372,12 @@ export default function DocumentsPage() {
       setSelectedFile(null);
       setIsUploadModalOpen(false);
       showToast('Dokument uspješno spremljen', 'success');
+      
+      // Clear any file input
+      const fileInput = document.getElementById('file') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
     } catch (err) {
       console.error('Error uploading file:', {
         error: err,

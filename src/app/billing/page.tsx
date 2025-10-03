@@ -133,7 +133,7 @@ export default function BillingPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  }, [showToast]);
+  }, []); // Remove showToast from deps to prevent infinite loop
 
   // Load cases from Supabase
   const loadCases = useCallback(async () => {
@@ -146,7 +146,7 @@ export default function BillingPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  }, [showToast]);
+  }, []); // Remove showToast from deps to prevent infinite loop
 
   // Load billing entries from Supabase with client and case joins
   const loadBillingEntries = useCallback(async () => {
@@ -173,14 +173,19 @@ export default function BillingPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast, t]);
+  }, []); // Remove showToast and t from deps to prevent infinite loop
 
   // Load all data on component mount
   useEffect(() => {
-    loadClients();
-    loadCases();
-    loadBillingEntries();
-  }, [loadClients, loadCases, loadBillingEntries]);
+    const loadData = async () => {
+      await Promise.all([
+        loadClients(),
+        loadCases(),
+        loadBillingEntries()
+      ]);
+    };
+    loadData();
+  }, []); // Empty dependency array to run only once on mount
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

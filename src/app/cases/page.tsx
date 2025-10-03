@@ -127,7 +127,7 @@ export default function CasesPage() {
       setError(errorMessage);
       showToast(errorMessage ?? "Greška pri dohvaćanju podataka", 'error');
     }
-  }, [showToast]);
+  }, []); // Remove showToast from deps to prevent infinite loop
 
 
   // Load cases from Supabase with client information and sorting
@@ -196,7 +196,7 @@ export default function CasesPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast, sortField, sortDirection]);
+  }, [sortField, sortDirection]); // Remove showToast from deps to prevent infinite loop
 
   // Get status color based on status
   const getStatusColor = (status: string): 'blue' | 'yellow' | 'green' => {
@@ -252,14 +252,14 @@ export default function CasesPage() {
       await Promise.all([loadClients(), loadCases()]);
     };
     loadData();
-  }, [loadUserPreferences, loadClients, loadCases]);
+  }, []); // Empty dependency array to run only once on mount
 
   // Load cases when preferences are loaded and sorting changes
   useEffect(() => {
     if (preferencesLoaded) {
       loadCases();
     }
-  }, [preferencesLoaded, sortField, sortDirection, loadCases]);
+  }, [preferencesLoaded, sortField, sortDirection]); // Remove loadCases from deps to prevent infinite loop
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
